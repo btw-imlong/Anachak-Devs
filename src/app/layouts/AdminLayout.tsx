@@ -1,22 +1,22 @@
-import { Outlet, Link, useLocation } from 'react-router';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Briefcase, 
-  Calendar, 
-  Settings, 
+import { Outlet, Link, useLocation } from "react-router";
+import {
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  Calendar,
+  Settings,
   Bell,
   Shield,
-  ArrowLeft
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
+  ArrowLeft,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'User Management', href: '/admin/users', icon: Users },
-  { name: 'Service Management', href: '/admin/services', icon: Briefcase },
-  { name: 'Task Management', href: '/admin/tasks', icon: Calendar },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "User Management", href: "/admin/users", icon: Users },
+  { name: "Service Management", href: "/admin/services", icon: Briefcase },
+  { name: "Task Management", href: "/admin/tasks", icon: Calendar },
+  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout() {
@@ -48,8 +48,8 @@ export default function AdminLayout() {
                   to={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -78,7 +78,8 @@ export default function AdminLayout() {
           <div className="flex items-center justify-between px-8 py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {navigation.find(item => item.href === location.pathname)?.name || 'Admin Portal'}
+                {navigation.find((item) => item.href === location.pathname)
+                  ?.name || "Admin Portal"}
               </h1>
             </div>
             <div className="flex items-center gap-4">
@@ -87,7 +88,9 @@ export default function AdminLayout() {
               </Button>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">Admin User</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Admin User
+                  </div>
                   <div className="text-xs text-gray-500">admin@school.edu</div>
                 </div>
                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">

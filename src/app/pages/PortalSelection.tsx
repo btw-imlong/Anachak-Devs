@@ -1,80 +1,91 @@
-import { Link } from 'react-router';
-import { Shield, GraduationCap, UserCircle } from 'lucide-react';
-import { Card } from '../components/ui/card';
+import { useState } from "react";
 
-export default function PortalSelection() {
+export default function LoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    // Your login logic here
+    console.log("Form Submitted", { email, password });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-6">
-      <div className="max-w-5xl w-full">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Student Accommodation Management System
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+      {/* Container with soft shadow and modern rounding */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-10 border border-gray-100">
+        <div className="mb-10 text-center">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            Welcome Back
           </h1>
-          <p className="text-lg text-gray-600">
-            Dormitory Management • 48 Rooms • Girls & Boys Divisions
+          <p className="text-gray-500 mt-2 font-medium">
+            Please enter your credentials to login
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Admin Portal */}
-          <Link to="/admin">
-            <Card className="p-8 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-blue-500 group">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-blue-500 transition-colors">
-                  <Shield className="w-10 h-10 text-blue-600 group-hover:text-white" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Admin Portal
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Full control over rooms, users, services, and task management
-                </p>
-                <div className="text-sm text-blue-600 font-medium">
-                  Enter Portal →
-                </div>
-              </div>
-            </Card>
-          </Link>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email Field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all duration-200"
+              placeholder="hello@example.com"
+            />
+          </div>
 
-          {/* Teacher Portal */}
-          <Link to="/teacher">
-            <Card className="p-8 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-blue-500 group">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-green-500 transition-colors">
-                  <GraduationCap className="w-10 h-10 text-green-600 group-hover:text-white" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Teacher Portal
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Manage assigned rooms, track attendance, and view tasks
-                </p>
-                <div className="text-sm text-green-600 font-medium">
-                  Enter Portal →
-                </div>
-              </div>
-            </Card>
-          </Link>
+          {/* Password Field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all duration-200"
+              placeholder="••••••••"
+            />
+          </div>
 
-          {/* Student Portal */}
-          <Link to="/student">
-            <Card className="p-8 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-blue-500 group">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-purple-500 transition-colors">
-                  <UserCircle className="w-10 h-10 text-purple-600 group-hover:text-white" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Student Portal
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  View your room, tasks, services, and attendance history
-                </p>
-                <div className="text-sm text-purple-600 font-medium">
-                  Enter Portal →
-                </div>
-              </div>
-            </Card>
-          </Link>
+          <div className="flex items-center justify-between px-1">
+            <label className="flex items-center text-sm text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"
+              />
+              Remember me
+            </label>
+            <button
+              type="button"
+              className="text-sm font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              Forgot?
+            </button>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="w-full py-4 bg-gray-900 hover:bg-black text-white font-bold rounded-2xl shadow-lg shadow-gray-900/20 transition-all active:scale-[0.98] mt-4"
+          >
+            Login
+          </button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <p className="text-gray-500 text-sm">
+            Don't have an account?
+            <button className="ml-2 font-bold text-gray-900 hover:underline">
+              Sign up
+            </button>
+          </p>
         </div>
       </div>
     </div>
