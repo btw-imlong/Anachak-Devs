@@ -23,7 +23,16 @@ export async function login(
       email,
       password,
     });
-    return response.data;
+
+    const data = response.data;
+
+    // ✅ Save these so dashboard can use them
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("userId", String(data.userId));
+    localStorage.setItem("role", data.role);
+    localStorage.setItem("name", data.name);
+
+    return data;
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Login failed");
   }

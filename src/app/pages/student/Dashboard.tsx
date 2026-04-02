@@ -1,23 +1,61 @@
-import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Home, User, Briefcase, Calendar } from 'lucide-react';
-import { Link } from 'react-router';
-import { students, getTeacherById, rooms, getTasksByRoom } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Home, User, Briefcase, Calendar } from "lucide-react";
+import { Link } from "react-router";
+import { jwtDecode } from "jwt-decode";
+import { getStudentByUserId } from "../../service/Studentdashboard";
+import type { StudentProfile } from "../../service/Studentdashboard";
 
 export default function StudentDashboard() {
-  // Using student s1 (Emma Wilson) as the logged-in student
-  const currentStudent = students[0]; // Emma Wilson
-  const room = rooms.find(r => r.id === currentStudent.roomId);
-  const teacher = room ? getTeacherById(room.teacherId) : null;
-  const todayTasks = getTasksByRoom(currentStudent.roomId);
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const todayTask = todayTasks.find(t => t.day === today);
+  const [student, setStudent] = useState<StudentProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStudent = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const userId = localStorage.getItem("userId");
+        if (!userId) return;
+        const data = await getStudentByUserId(userId);
+        setStudent(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudent();
+  }, []);
+
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!student) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Failed to load student data.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
       <Card className="p-8 bg-gradient-to-br from-purple-500 to-blue-600 text-white">
-        <h2 className="text-3xl font-bold mb-2">Welcome back, {currentStudent.name.split(' ')[0]}! 👋</h2>
+        <h2 className="text-3xl font-bold mb-2">
+          Welcome back, {student.name.split(" ")[0]}! 👋
+        </h2>
         <p className="text-purple-100">Here's your accommodation overview</p>
       </Card>
 
@@ -27,9 +65,11 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">My Room</p>
-              <p className="text-3xl font-bold text-gray-900">{currentStudent.roomId}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {student.room?.roomNumber || "N/A"}
+              </p>
               <p className="text-xs text-gray-500 mt-1">
-                {room?.side === 'girls' ? 'Girls' : 'Boys'} Side
+                {student.room?.side || "—"} Side
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -42,8 +82,12 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">My Teacher</p>
-              <p className="text-lg font-bold text-gray-900">{teacher?.name.split(' ')[1] || 'N/A'}</p>
-              <p className="text-xs text-gray-500 mt-1">{teacher?.name || 'Not assigned'}</p>
+              <p className="text-lg font-bold text-gray-900">
+                {student.room?.teacher?.name || "Not assigned"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {student.room?.teacher ? "Assigned" : "No teacher"}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <User className="w-6 h-6 text-blue-600" />
@@ -56,10 +100,12 @@ export default function StudentDashboard() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Service Role</p>
               <p className="text-lg font-bold text-gray-900">
-                {currentStudent.serviceRole ? currentStudent.serviceRole : 'None'}
+                {student.services.length > 0
+                  ? student.services.map((s) => s.name).join(", ")
+                  : "None"}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {currentStudent.serviceRole ? 'Active duty' : 'No assignment'}
+                {student.services.length > 0 ? "Active duty" : "No assignment"}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -77,14 +123,16 @@ export default function StudentDashboard() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="font-semibold text-gray-900">Today's Task - {today}</h3>
+              <h3 className="font-semibold text-gray-900">
+                Today's Task - {today}
+              </h3>
               <Badge className="bg-blue-600 hover:bg-blue-600">Current</Badge>
             </div>
             <p className="text-lg text-gray-900 mb-1">
-              {todayTask?.task || 'No task assigned for today'}
+              No task assigned for today
             </p>
             <p className="text-sm text-gray-600">
-              Room {currentStudent.roomId} • Rotation Month {todayTask?.rotationMonth || 1}/3
+              Room {student.room?.roomNumber || "N/A"}
             </p>
           </div>
         </div>
@@ -92,28 +140,57 @@ export default function StudentDashboard() {
 
       {/* Room Information */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Room Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Room Information
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Room Number</p>
-            <p className="text-2xl font-bold text-gray-900">{currentStudent.roomId}</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {student.room?.roomNumber || "N/A"}
+            </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Section</p>
-            <Badge variant={room?.side === 'girls' ? 'secondary' : 'default'} className="text-base px-3 py-1">
-              {room?.side === 'girls' ? 'Girls' : 'Boys'} Side
+            <Badge
+              variant={student.room?.side === "Girls" ? "secondary" : "default"}
+              className="text-base px-3 py-1"
+            >
+              {student.room?.side || "—"} Side
             </Badge>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Assigned Teacher</p>
-            <p className="font-medium text-gray-900">{teacher?.name || 'Not assigned'}</p>
+            <p className="font-medium text-gray-900">
+              {student.room?.teacher?.name || "Not assigned"}
+            </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Teacher Email</p>
-            <p className="font-medium text-gray-900">{teacher?.email || 'N/A'}</p>
+            <p className="text-sm text-gray-600 mb-1">ID Card Number</p>
+            <p className="font-medium text-gray-900">{student.idCardNumber}</p>
           </div>
         </div>
       </Card>
+
+      {/* Services */}
+      {student.services.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            My Services
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {student.services.map((service) => (
+              <div
+                key={service.serviceId}
+                className="p-4 bg-green-50 rounded-lg border border-green-200"
+              >
+                <p className="font-medium text-gray-900">{service.name}</p>
+                <p className="text-sm text-gray-600">{service.description}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -125,7 +202,9 @@ export default function StudentDashboard() {
               </div>
               <h3 className="font-semibold text-gray-900">Weekly Tasks</h3>
             </div>
-            <p className="text-sm text-gray-600">View your complete weekly task schedule</p>
+            <p className="text-sm text-gray-600">
+              View your complete weekly task schedule
+            </p>
           </Card>
         </Link>
 
@@ -137,7 +216,9 @@ export default function StudentDashboard() {
               </div>
               <h3 className="font-semibold text-gray-900">My Services</h3>
             </div>
-            <p className="text-sm text-gray-600">Check your assigned service duties</p>
+            <p className="text-sm text-gray-600">
+              Check your assigned service duties
+            </p>
           </Card>
         </Link>
 
@@ -147,9 +228,13 @@ export default function StudentDashboard() {
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
-              <h3 className="font-semibold text-gray-900">Attendance History</h3>
+              <h3 className="font-semibold text-gray-900">
+                Attendance History
+              </h3>
             </div>
-            <p className="text-sm text-gray-600">Review your attendance records</p>
+            <p className="text-sm text-gray-600">
+              Review your attendance records
+            </p>
           </Card>
         </Link>
       </div>
