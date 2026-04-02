@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8081";
+import { BASE_URL } from "../config/api";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",
@@ -23,7 +23,7 @@ export interface CreateStudentPayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export const getStudents = async (): Promise<Student[]> => {
-  const res = await fetch(`${BASE_URL}/users/student`, {
+  const res = await fetch(`${BASE_URL}/api/users/students`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch students");
@@ -33,7 +33,7 @@ export const getStudents = async (): Promise<Student[]> => {
 export const createStudent = async (
   data: CreateStudentPayload,
 ): Promise<Student> => {
-  const res = await fetch(`${BASE_URL}/users/student`, {
+  const res = await fetch(`${BASE_URL}/api/users/students`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -43,7 +43,7 @@ export const createStudent = async (
 };
 
 export const deleteStudent = async (id: string): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/users/student/${id}`, {
+  const res = await fetch(`${BASE_URL}/api/users/students/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });

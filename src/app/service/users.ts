@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8081";
+import { BASE_URL } from "../config/api";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",
@@ -32,7 +32,7 @@ export interface CreateStudentPayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const res = await fetch(`${BASE_URL}/api/users`, {
+  const res = await fetch(`${BASE_URL}/users`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch users");

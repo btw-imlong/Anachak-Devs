@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8081";
+import { BASE_URL } from "../config/api";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",
@@ -25,7 +25,7 @@ export interface CreateTeacherPayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export const getTeachers = async (): Promise<Teacher[]> => {
-  const res = await fetch(`${BASE_URL}/users/teacher`, {
+  const res = await fetch(`${BASE_URL}/api/users/teachers`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch teachers");
@@ -35,7 +35,7 @@ export const getTeachers = async (): Promise<Teacher[]> => {
 export const createTeacher = async (
   data: CreateTeacherPayload,
 ): Promise<Teacher> => {
-  const res = await fetch(`${BASE_URL}/users/teacher`, {
+  const res = await fetch(`${BASE_URL}/api/users/teachers`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -45,7 +45,7 @@ export const createTeacher = async (
 };
 
 export const deleteTeacher = async (id: string): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/users/teacher/${id}`, {
+  const res = await fetch(`${BASE_URL}/api/users/teachers/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });

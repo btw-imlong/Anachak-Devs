@@ -1,15 +1,13 @@
 import axios from "axios";
-
-const API_BASE = "http://localhost:8081";
+import { BASE_URL } from "../config/api";
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE,
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor to attach token only if it exists
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token && config.headers) {
