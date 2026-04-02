@@ -1,203 +1,324 @@
-import { useState } from 'react';
-import { Card } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Badge } from '../../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
-import { Input } from '../../components/ui/input';
-import { Edit, Filter } from 'lucide-react';
-import { tasks, rooms } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { Card } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { Badge } from "../../components/ui/badge";
+import { Plus, UserPlus, Edit, Trash2 } from "lucide-react";
+import {
+  getServices,
+  createService,
+  deleteService,
+} from "../../service/Service";
+import type { Service } from "../../service/Service";
+import { getAllUsers } from "../../service/users";
+import type { User } from "../../service/users";
 
-export default function TaskManagement() {
-  const [sideFilter, setSideFilter] = useState<'all' | 'girls' | 'boys'>('all');
-  const [rotationFilter, setRotationFilter] = useState<'all' | '1' | '2' | '3'>('all');
-  const [editTaskOpen, setEditTaskOpen] = useState(false);
+export default function ServiceManagement() {
+  const [createServiceOpen, setCreateServiceOpen] = useState(false);
+  const [assignServiceOpen, setAssignServiceOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<string>("");
 
-  const filteredTasks = tasks.filter(task => {
-    const room = rooms.find(r => r.id === task.roomId);
-    if (!room) return false;
-    
-    if (sideFilter !== 'all' && room.side !== sideFilter) return false;
-    if (rotationFilter !== 'all' && task.rotationMonth.toString() !== rotationFilter) return false;
-    
-    return true;
-  });
+  const [services, setServices] = useState<Service[]>([]);
+  const [students, setStudents] = useState<User[]>([]);
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "" });
+  const [serviceLoading, setServiceLoading] = useState(false);
+
+  // Fetch services and students on mount
+  useEffect(() => {
+    getServices().then(setServices).catch(console.error);
+    getAllUsers()
+      .then((users) =>
+        setStudents(
+          users.filter(
+            (u) => u.role === "STUDENT" || u.role === "ROLE_STUDENT",
+          ),
+        ),
+      )
+      .catch(console.error);
+  }, []);
+
+  const handleCreateService = async () => {
+    try {
+      setServiceLoading(true);
+      await createService(serviceForm);
+      const updated = await getServices();
+      setServices(updated);
+      setCreateServiceOpen(false);
+      setServiceForm({ name: "", description: "" });
+      toast.success("Service created successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create service!");
+    } finally {
+      setServiceLoading(false);
+    }
+  };
+
+  const handleDeleteService = async (id: string) => {
+    try {
+      await deleteService(id);
+      const updated = await getServices();
+      setServices(updated);
+      toast.success("Service deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete service!");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Task Management</h2>
-          <p className="text-sm text-gray-500">Manage weekly tasks and 3-month rotation schedule</p>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Service Management
+          </h2>
+          <p className="text-sm text-gray-500">
+            Create and assign student services and duties
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {/* Create Service Dialog */}
+          <Dialog open={createServiceOpen} onOpenChange={setCreateServiceOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Service
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New Service</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Service Name</Label>
+                  <Input
+                    placeholder="e.g., Library Duty"
+                    value={serviceForm.name}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    placeholder="Describe the responsibilities and duties"
+                    rows={4}
+                    value={serviceForm.description}
+                    onChange={(e) =>
+                      setServiceForm({
+                        ...serviceForm,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    className="flex-1"
+                    onClick={handleCreateService}
+                    disabled={serviceLoading}
+                  >
+                    {serviceLoading ? "Creating..." : "Create Service"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCreateServiceOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Assign Service Dialog */}
+          <Dialog open={assignServiceOpen} onOpenChange={setAssignServiceOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Assign to Student
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Assign Service to Student</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Select Service</Label>
+                  <Select
+                    value={selectedService}
+                    onValueChange={setSelectedService}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Select Student</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    className="flex-1"
+                    onClick={() => setAssignServiceOpen(false)}
+                  >
+                    Assign Service
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAssignServiceOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filters:</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Label htmlFor="side-filter" className="text-sm">Side:</Label>
-            <Select value={sideFilter} onValueChange={(value: any) => setSideFilter(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sides</SelectItem>
-                <SelectItem value="girls">Girls</SelectItem>
-                <SelectItem value="boys">Boys</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Service List */}
+      <div className="grid gap-4">
+        {services.length === 0 ? (
+          <Card className="p-6 text-center text-gray-400">
+            No services found
+          </Card>
+        ) : (
+          services.map((service) => {
+            const assignedStudents = students.filter((s) =>
+              service.assignedStudents?.includes(s.id),
+            );
 
-          <div className="flex items-center gap-2">
-            <Label htmlFor="rotation-filter" className="text-sm">Rotation Month:</Label>
-            <Select value={rotationFilter} onValueChange={(value: any) => setRotationFilter(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Months</SelectItem>
-                <SelectItem value="1">Month 1</SelectItem>
-                <SelectItem value="2">Month 2</SelectItem>
-                <SelectItem value="3">Month 3</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="ml-auto">
-            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-              Current: Rotation Month 1/3
-            </Badge>
-          </div>
-        </div>
-      </Card>
-
-      {/* Tasks Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Room</TableHead>
-                <TableHead>Side</TableHead>
-                <TableHead>Day</TableHead>
-                <TableHead>Task</TableHead>
-                <TableHead>Rotation Month</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTasks.slice(0, 50).map(task => {
-                const room = rooms.find(r => r.id === task.roomId);
-                return (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.roomId}</TableCell>
-                    <TableCell>
-                      <Badge variant={room?.side === 'girls' ? 'secondary' : 'default'}>
-                        {room?.side === 'girls' ? 'Girls' : 'Boys'}
+            return (
+              <Card key={service.id} className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {service.name}
+                      </h3>
+                      <Badge variant="secondary">
+                        {assignedStudents.length}{" "}
+                        {assignedStudents.length === 1 ? "student" : "students"}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{task.day}</Badge>
-                    </TableCell>
-                    <TableCell>{task.task}</TableCell>
-                    <TableCell>
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        Month {task.rotationMonth}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Dialog open={editTaskOpen} onOpenChange={setEditTaskOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Edit Task</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <Label>Room</Label>
-                              <Input value={task.roomId} disabled />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Day</Label>
-                              <Select defaultValue={task.day}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {days.map(day => (
-                                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Task</Label>
-                              <Input defaultValue={task.task} />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Rotation Month</Label>
-                              <Select defaultValue={task.rotationMonth.toString()}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="1">Month 1</SelectItem>
-                                  <SelectItem value="2">Month 2</SelectItem>
-                                  <SelectItem value="3">Month 3</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex gap-2 pt-4">
-                              <Button className="flex-1" onClick={() => setEditTaskOpen(false)}>
-                                Save Changes
-                              </Button>
-                              <Button variant="outline" onClick={() => setEditTaskOpen(false)}>
-                                Cancel
-                              </Button>
-                            </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {service.description}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteService(service.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+
+                {assignedStudents.length > 0 ? (
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-3">
+                      Assigned Students:
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {assignedStudents.map((student) => (
+                        <div
+                          key={student.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {student.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {student.email}
+                            </p>
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-gray-400">
+                      No students assigned yet
+                    </p>
+                  </div>
+                )}
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Service Examples Section */}
+      <Card className="p-6 bg-blue-50 border-blue-200">
+        <h3 className="font-semibold text-gray-900 mb-2">Example Services</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 bg-white rounded-lg">
+            <p className="text-sm font-medium text-gray-900">Library Duty</p>
+            <p className="text-xs text-gray-600">Organize books</p>
+          </div>
+          <div className="p-3 bg-white rounded-lg">
+            <p className="text-sm font-medium text-gray-900">Cleaning Leader</p>
+            <p className="text-xs text-gray-600">Supervise cleaning</p>
+          </div>
+          <div className="p-3 bg-white rounded-lg">
+            <p className="text-sm font-medium text-gray-900">Garden Work</p>
+            <p className="text-xs text-gray-600">Maintain garden</p>
+          </div>
+          <div className="p-3 bg-white rounded-lg">
+            <p className="text-sm font-medium text-gray-900">Hall Monitor</p>
+            <p className="text-xs text-gray-600">Monitor corridors</p>
+          </div>
         </div>
       </Card>
-
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-blue-50 border-blue-200">
-          <h3 className="font-semibold text-gray-900 mb-2">Rotation Schedule</h3>
-          <p className="text-sm text-gray-600">Tasks rotate every 3 months. Current period: Month 1 (Jan-Mar 2026)</p>
-        </Card>
-        
-        <Card className="p-4 bg-green-50 border-green-200">
-          <h3 className="font-semibold text-gray-900 mb-2">Weekly Tasks</h3>
-          <p className="text-sm text-gray-600">Each room has assigned tasks for all 7 days of the week</p>
-        </Card>
-        
-        <Card className="p-4 bg-purple-50 border-purple-200">
-          <h3 className="font-semibold text-gray-900 mb-2">Room Distribution</h3>
-          <p className="text-sm text-gray-600">24 rooms on Girls' side, 24 rooms on Boys' side</p>
-        </Card>
-      </div>
     </div>
   );
 }
