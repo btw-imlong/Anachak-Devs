@@ -7,7 +7,14 @@ export default function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
     </>
   );
 }

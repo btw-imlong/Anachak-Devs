@@ -8,13 +8,15 @@ import AdminUserManagement from "./pages/admin/UserManagement";
 import AdminServiceManagement from "./pages/admin/ServiceManagement";
 import AdminTaskManagement from "./pages/admin/TaskManagement";
 import TeacherDashboard from "./pages/teacher/Dashboard";
-import TeacherRoomDetail from "./pages/teacher/RoomDetail";
+import TeacherRoomDetail from "./pages/teacher/RoomDetail"; // ✅ only once
 import TeacherAttendance from "./pages/teacher/Attendance";
 import TeacherTasks from "./pages/teacher/Tasks";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentTasks from "./pages/student/Tasks";
 import StudentServices from "./pages/student/Services";
 import StudentAttendance from "./pages/student/Attendance";
+import AttendanceToday from "./pages/teacher/AttendanceTodays";
+import AllRoomsTasks from "./pages/teacher/TeacherTask";
 
 export const router = createBrowserRouter([
   {
@@ -36,9 +38,11 @@ export const router = createBrowserRouter([
     Component: TeacherLayout,
     children: [
       { index: true, Component: TeacherDashboard },
-      { path: "room/:roomId", Component: TeacherRoomDetail },
+      { path: "room/:roomId", Component: TeacherRoomDetail }, // ✅ roomId
       { path: "attendance", Component: TeacherAttendance },
       { path: "tasks", Component: TeacherTasks },
+      { path: "attendance-today", Component: AttendanceToday },
+      { path: "tasks/all", Component: AllRoomsTasks },
     ],
   },
   {

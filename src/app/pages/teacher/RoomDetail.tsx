@@ -1,22 +1,54 @@
-import { useParams, Link } from 'react-router';
-import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { ArrowLeft, Users, ClipboardCheck } from 'lucide-react';
-import { getRoomById, getStudentsByRoom, getTeacherById, attendanceRecords } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { ArrowLeft, Users, ClipboardCheck } from "lucide-react";
+import { BASE_URL } from "../../config/api";
+import type { RoomDetailResponse } from "../../service/room";
 
 export default function TeacherRoomDetail() {
-  const { roomId } = useParams();
-  const room = getRoomById(roomId || '');
-  const students = getStudentsByRoom(roomId || '');
-  const teacher = getTeacherById(room?.teacherId || '');
+  const { roomId } = useParams<{ roomId: string }>();
+  const [room, setRoom] = useState<RoomDetailResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const todayDate = new Date().toISOString().split('T')[0];
-  const todayAttendance = attendanceRecords.filter(r => 
-    r.date === todayDate && students.some(s => s.id === r.studentId)
-  );
+  const token = localStorage.getItem("token");
+  const authHeader = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 
-  if (!room) {
+  useEffect(() => {
+    if (!roomId) return;
+    fetchRoomDetail();
+  }, [roomId]);
+
+  async function fetchRoomDetail() {
+    try {
+      setLoading(true);
+      const res = await fetch(`${BASE_URL}/api/rooms/id/${roomId}`, {
+        headers: authHeader,
+      });
+      if (!res.ok) throw new Error("Failed to fetch room details");
+      const data: RoomDetailResponse = await res.json();
+      setRoom(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-sm">Loading room details...</p>
+      </div>
+    );
+  }
+
+  if (error || !room) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Room not found</p>
@@ -39,12 +71,22 @@ export default function TeacherRoomDetail() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">Room {room.number}</h1>
-              <Badge variant={room.side === 'girls' ? 'secondary' : 'default'}>
-                {room.side === 'girls' ? 'Girls' : 'Boys'} Side
+              <h1 className="text-3xl font-bold text-gray-900">
+                Room {room.roomNumber}
+              </h1>
+              <Badge
+                variant={
+                  room.side.toLowerCase() === "girls" ? "secondary" : "default"
+                }
+              >
+                {room.side} Side
               </Badge>
             </div>
-            <p className="text-gray-600">Assigned Teacher: {teacher?.name}</p>
+            {room.teachers.length > 0 && (
+              <p className="text-gray-600">
+                Assigned Teacher: {room.teachers.map((t) => t.name).join(", ")}
+              </p>
+            )}
           </div>
           <Link to="/teacher/attendance">
             <Button>
@@ -61,7 +103,9 @@ export default function TeacherRoomDetail() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Students</p>
-              <p className="text-3xl font-bold text-gray-900">{students.length}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {room.totalStudents}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-blue-600" />
@@ -72,9 +116,9 @@ export default function TeacherRoomDetail() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">With Service Roles</p>
+              <p className="text-sm text-gray-600 mb-1">Assigned Teachers</p>
               <p className="text-3xl font-bold text-gray-900">
-                {students.filter(s => s.serviceRole).length}
+                {room.teachers.length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -87,8 +131,9 @@ export default function TeacherRoomDetail() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Present Today</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {todayAttendance.filter(a => a.status === 'present').length}
+              <p className="text-3xl font-bold text-gray-900">—</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Attendance coming soon
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -101,60 +146,42 @@ export default function TeacherRoomDetail() {
       {/* Student List */}
       <Card className="p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Students</h2>
-        
-        {students.length === 0 ? (
+
+        {room.students.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500">No students assigned to this room yet</p>
+            <p className="text-gray-500">
+              No students assigned to this room yet
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {students.map(student => {
-              const attendance = todayAttendance.find(a => a.studentId === student.id);
-              return (
-                <div 
-                  key={student.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-medium text-sm">
-                        {student.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{student.name}</p>
-                      {student.serviceRole && (
-                        <p className="text-sm text-gray-600">{student.serviceRole}</p>
-                      )}
-                    </div>
+            {room.students.map((student, index) => (
+              <div
+                key={student.studentId}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">
+                      {student.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    {student.serviceRole && (
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {student.serviceRole}
-                      </Badge>
-                    )}
-                    {attendance && (
-                      <Badge 
-                        variant={
-                          attendance.status === 'present' ? 'default' :
-                          attendance.status === 'late' ? 'secondary' :
-                          'destructive'
-                        }
-                        className={
-                          attendance.status === 'present' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
-                          attendance.status === 'late' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' :
-                          'bg-red-100 text-red-700 hover:bg-red-100'
-                        }
-                      >
-                        {attendance.status.charAt(0).toUpperCase() + attendance.status.slice(1)}
-                      </Badge>
-                    )}
+                  <div>
+                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {student.idCardNumber}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">#{index + 1}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Card>
