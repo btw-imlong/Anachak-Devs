@@ -1,25 +1,140 @@
-import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Calendar, TrendingUp } from 'lucide-react';
-import { students, getAttendanceByStudent } from '../../data/mockData';
+import { useEffect, useState } from "react";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Calendar, TrendingUp } from "lucide-react";
+import { BASE_URL } from "../../config/api";
+
+interface AttendanceRecord {
+  recordId: number;
+  studentId: number;
+  studentName: string;
+  status: "PRESENT" | "LATE" | "ABSENT";
+  teacherName: string | null;
+  date: string;
+}
+
+type FilterOption = "ALL" | "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
+
+const ATTENDANCE_URL = `${BASE_URL}/api/student/attendance`;
+
+const getHeaders = (): HeadersInit => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+});
+
+const getDateRange = (
+  filter: FilterOption,
+): { from: string; to: string } | null => {
+  const today = new Date();
+  const to = today.toISOString().split("T")[0];
+
+  if (filter === "THIS_MONTH") {
+    const from = new Date(today.getFullYear(), today.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+    return { from, to };
+  }
+
+  if (filter === "LAST_3_MONTHS") {
+    const from = new Date(
+      today.getFullYear(),
+      today.getMonth() - 3,
+      today.getDate(),
+    )
+      .toISOString()
+      .split("T")[0];
+    return { from, to };
+  }
+
+  if (filter === "THIS_YEAR") {
+    const from = new Date(today.getFullYear(), 0, 1)
+      .toISOString()
+      .split("T")[0];
+    return { from, to };
+  }
+
+  return null; // ALL — no date filter
+};
 
 export default function StudentAttendance() {
-  const currentStudent = students[0]; // Emma Wilson
-  const myAttendance = getAttendanceByStudent(currentStudent.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterOption>("ALL");
 
-  const presentCount = myAttendance.filter(a => a.status === 'present').length;
-  const lateCount = myAttendance.filter(a => a.status === 'late').length;
-  const absentCount = myAttendance.filter(a => a.status === 'absent').length;
-  const attendanceRate = myAttendance.length > 0 
-    ? Math.round((presentCount / myAttendance.length) * 100) 
-    : 0;
+  const fetchAttendance = async (
+    selectedFilter: FilterOption,
+  ): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const range = getDateRange(selectedFilter);
+      const url = range
+        ? `${ATTENDANCE_URL}/range?from=${range.from}&to=${range.to}`
+        : ATTENDANCE_URL;
+
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch attendance");
+      const data: AttendanceRecord[] = await res.json();
+      setAttendance(data);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAttendance(filter);
+  }, [filter]); // 👈 auto re-fetch when filter changes
+
+  const presentCount: number = attendance.filter(
+    (a) => a.status === "PRESENT",
+  ).length;
+  const lateCount: number = attendance.filter(
+    (a) => a.status === "LATE",
+  ).length;
+  const absentCount: number = attendance.filter(
+    (a) => a.status === "ABSENT",
+  ).length;
+  const attendanceRate: number =
+    attendance.length > 0
+      ? Math.round((presentCount / attendance.length) * 100)
+      : 0;
+
+  const filterOptions: { label: string; value: FilterOption }[] = [
+    { label: "All Time", value: "ALL" },
+    { label: "This Month", value: "THIS_MONTH" },
+    { label: "Last 3 Months", value: "LAST_3_MONTHS" },
+    { label: "This Year", value: "THIS_YEAR" },
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">My Attendance History</h2>
-        <p className="text-sm text-gray-500">Track your attendance records</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">
+            My Attendance History
+          </h2>
+          <p className="text-sm text-gray-500">Track your attendance records</p>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+          {filterOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setFilter(option.value)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                filter === option.value
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -28,7 +143,9 @@ export default function StudentAttendance() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Attendance Rate</p>
-              <p className="text-3xl font-bold text-gray-900">{attendanceRate}%</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {attendanceRate}%
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -40,7 +157,9 @@ export default function StudentAttendance() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Present</p>
-              <p className="text-3xl font-bold text-green-600">{presentCount}</p>
+              <p className="text-3xl font-bold text-green-600">
+                {presentCount}
+              </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <div className="w-4 h-4 bg-green-500 rounded-full"></div>
@@ -73,56 +192,59 @@ export default function StudentAttendance() {
         </Card>
       </div>
 
-      {/* Attendance Records */}
+      {/* Records */}
       <Card className="overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b">
-          <h3 className="font-semibold text-gray-900">Recent Attendance Records</h3>
+          <h3 className="font-semibold text-gray-900">
+            Recent Attendance Records
+          </h3>
         </div>
 
-        {myAttendance.length > 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-gray-400">Loading...</div>
+        ) : error ? (
+          <div className="p-12 text-center text-red-500">{error}</div>
+        ) : attendance.length > 0 ? (
           <div className="divide-y">
-            {myAttendance.map((record, index) => {
-              const date = new Date(record.date);
-              const formattedDate = date.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              });
-
-              return (
-                <div 
-                  key={record.id} 
-                  className={`p-5 flex items-center justify-between hover:bg-gray-50 transition-colors ${
-                    index === 0 ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{formattedDate}</p>
-                      <p className="text-sm text-gray-500">
-                        {index === 0 ? 'Most recent' : `${index + 1} days ago`}
-                      </p>
-                    </div>
+            {attendance.map((record: AttendanceRecord, index: number) => (
+              <div
+                key={record.recordId}
+                className={`p-5 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                  index === 0 ? "bg-blue-50" : ""
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-purple-600" />
                   </div>
-
-                  <Badge 
-                    className={
-                      record.status === 'present' 
-                        ? 'bg-green-100 text-green-700 hover:bg-green-100' 
-                        : record.status === 'late'
-                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
-                        : 'bg-red-100 text-red-700 hover:bg-red-100'
-                    }
-                  >
-                    {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                  </Badge>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {new Date(record.date).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {index === 0 ? "Most recent" : `Record #${index + 1}`}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
+
+                <Badge
+                  className={
+                    record.status === "PRESENT"
+                      ? "bg-green-100 text-green-700 hover:bg-green-100"
+                      : record.status === "LATE"
+                        ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                        : "bg-red-100 text-red-700 hover:bg-red-100"
+                  }
+                >
+                  {record.status}
+                </Badge>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="p-12 text-center">
@@ -134,21 +256,25 @@ export default function StudentAttendance() {
 
       {/* Performance Insights */}
       <Card className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-        <h3 className="font-semibold text-gray-900 mb-3">Attendance Performance</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">
+          Attendance Performance
+        </h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-700">Overall Attendance</span>
             <div className="flex items-center gap-2">
               <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full"
                   style={{ width: `${attendanceRate}%` }}
                 ></div>
               </div>
-              <span className="text-sm font-medium text-gray-900">{attendanceRate}%</span>
+              <span className="text-sm font-medium text-gray-900">
+                {attendanceRate}%
+              </span>
             </div>
           </div>
-          
+
           {attendanceRate >= 90 && (
             <div className="p-3 bg-green-100 border border-green-200 rounded-lg">
               <p className="text-sm text-green-800">
@@ -156,7 +282,7 @@ export default function StudentAttendance() {
               </p>
             </div>
           )}
-          
+
           {attendanceRate >= 75 && attendanceRate < 90 && (
             <div className="p-3 bg-yellow-100 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
@@ -164,11 +290,12 @@ export default function StudentAttendance() {
               </p>
             </div>
           )}
-          
-          {attendanceRate < 75 && (
+
+          {attendanceRate < 75 && attendanceRate > 0 && (
             <div className="p-3 bg-red-100 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">
-                ⚠️ Your attendance needs attention. Please speak with your teacher.
+                ⚠️ Your attendance needs attention. Please speak with your
+                teacher.
               </p>
             </div>
           )}
