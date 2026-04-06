@@ -4,23 +4,60 @@ import {
   Users,
   Briefcase,
   Calendar,
-  Settings,
+  Home,
   Bell,
   Shield,
   ArrowLeft,
+  LogOut,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { useNavigate } from "react-router";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "User Management", href: "/admin/users", icon: Users },
+  { name: "Room Management", href: "/admin/rooms", icon: Home }, // ✅ added
   { name: "Service Management", href: "/admin/services", icon: Briefcase },
   { name: "Task Management", href: "/admin/tasks", icon: Calendar },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // ✅ read from localStorage
+  const adminName = localStorage.getItem("name") || "Admin";
+  const adminEmail = localStorage.getItem("email") || "admin@school.edu";
+  const adminInitials = adminName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  // ✅ logout
+  function handleLogout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("role");
+    localStorage.removeItem("name");
+    localStorage.removeItem("email");
+    navigate("/");
+  }
+
+  // ✅ active check — also highlight parent for nested routes
+  function isActive(href: string): boolean {
+    if (href === "/admin") return location.pathname === "/admin";
+    return location.pathname.startsWith(href);
+  }
+
+  // ✅ get current page name including nested routes
+  const currentPage =
+    navigation.find((item) =>
+      item.href === "/admin"
+        ? location.pathname === "/admin"
+        : location.pathname.startsWith(item.href),
+    )?.name || "Admin Portal";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -41,13 +78,13 @@ export default function AdminLayout() {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
+                    active
                       ? "bg-blue-50 text-blue-600"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
@@ -59,14 +96,16 @@ export default function AdminLayout() {
             })}
           </nav>
 
-          {/* Back to Portal Selection */}
-          <div className="p-4 border-t border-gray-200">
-            <Link to="/">
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Portals
-              </Button>
-            </Link>
+          {/* Bottom */}
+          <div className="p-4 border-t border-gray-200 space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>
@@ -76,12 +115,7 @@ export default function AdminLayout() {
         {/* Top Navigation */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-8 py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {navigation.find((item) => item.href === location.pathname)
-                  ?.name || "Admin Portal"}
-              </h1>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{currentPage}</h1>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon">
                 <Bell className="w-5 h-5" />
@@ -89,12 +123,14 @@ export default function AdminLayout() {
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <div className="text-sm font-medium text-gray-900">
-                    Admin User
+                    {adminName} {/* ✅ real name */}
                   </div>
-                  <div className="text-xs text-gray-500">admin@school.edu</div>
+                  <div className="text-xs text-gray-500">{adminEmail}</div>
                 </div>
                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium">AU</span>
+                  <span className="text-white font-medium text-sm">
+                    {adminInitials} {/* ✅ real initials */}
+                  </span>
                 </div>
               </div>
             </div>

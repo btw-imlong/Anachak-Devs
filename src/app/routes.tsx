@@ -17,6 +17,7 @@ import StudentServices from "./pages/student/Services";
 import StudentAttendance from "./pages/student/Attendance";
 import AttendanceToday from "./pages/teacher/AttendanceTodays";
 import AllRoomsTasks from "./pages/teacher/TeacherTask";
+import RoomManagement from "./pages/admin/RoomManagement";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "users", Component: AdminUserManagement },
       { path: "services", Component: AdminServiceManagement },
       { path: "tasks", Component: AdminTaskManagement },
+      { path: "rooms", Component: RoomManagement },
     ],
   },
   {

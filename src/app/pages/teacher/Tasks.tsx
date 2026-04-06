@@ -9,7 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { CalendarDays, CheckCircle2, Clock, XCircle } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  RotateCcw,
+} from "lucide-react";
 import { BASE_URL } from "../../config/api";
 import { toast } from "react-toastify";
 import { Link } from "react-router";
@@ -19,9 +25,7 @@ import type {
   TaskCompletionResponse,
 } from "../../service/TeacherTask";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const DAYS: string[] = [
+const DAYS = [
   "Monday",
   "Tuesday",
   "Wednesday",
@@ -31,14 +35,51 @@ const DAYS: string[] = [
   "Sunday",
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const JS_DAY_MAP: Record<number, string> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+};
+
+function getTodayName(): string {
+  return JS_DAY_MAP[new Date().getDay()];
+}
+
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+// Get Monday of the current week
+function getWeekFrom(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  return monday.toISOString().split("T")[0];
+}
+
+function getWeekTo(): string {
+  const from = new Date(getWeekFrom());
+  from.setDate(from.getDate() + 6);
+  return from.toISOString().split("T")[0];
+}
 
 export default function TeacherTasks() {
   const [myRooms, setMyRooms] = useState<RoomInfo[]>([]);
   const [tasksByRoom, setTasksByRoom] = useState<
     Record<string, TaskResponse[]>
   >({});
-  const [loading, setLoading] = useState<boolean>(true);
+  // completionKey set: "taskId|date"
+  const [completionKeys, setCompletionKeys] = useState<Set<string>>(new Set());
+  // map taskId|date -> completionId (for unmark)
+  const [completionIdMap, setCompletionIdMap] = useState<
+    Record<string, number>
+  >({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingTaskId, setMarkingTaskId] = useState<number | null>(null);
 
@@ -49,7 +90,10 @@ export default function TeacherTasks() {
     Authorization: `Bearer ${token}`,
   };
 
-  const today = new Date().toISOString().split("T")[0]; // yyyy-MM-dd
+  const today = getTodayDate();
+  const todayName = getTodayName();
+  const weekFrom = getWeekFrom();
+  const weekTo = getWeekTo();
 
   useEffect(() => {
     fetchData();
@@ -58,7 +102,6 @@ export default function TeacherTasks() {
   async function fetchData() {
     try {
       setLoading(true);
-
       const teacherRes = await fetch(
         `${BASE_URL}/api/users/teacher/by-user/${userId}`,
         { headers: authHeader },
@@ -68,22 +111,40 @@ export default function TeacherTasks() {
       const rooms: RoomInfo[] = teacher.rooms || [];
       setMyRooms(rooms);
 
+      // fetch tasks per room
       const taskMap: Record<string, TaskResponse[]> = {};
       await Promise.all(
-        rooms.map(async (room: RoomInfo) => {
+        rooms.map(async (room) => {
           const res = await fetch(
             `${BASE_URL}/api/tasks/room/${room.roomNumber}`,
             { headers: authHeader },
           );
-          if (res.ok) {
-            const tasks: TaskResponse[] = await res.json();
-            taskMap[room.roomNumber] = tasks;
-          } else {
-            taskMap[room.roomNumber] = [];
-          }
+          taskMap[room.roomNumber] = res.ok ? await res.json() : [];
         }),
       );
       setTasksByRoom(taskMap);
+
+      // fetch this week's completions for all my rooms
+      const keys = new Set<string>();
+      const idMap: Record<string, number> = {};
+      await Promise.all(
+        rooms.map(async (room) => {
+          const res = await fetch(
+            `${BASE_URL}/api/tasks/completions/room/${room.roomNumber}?from=${weekFrom}&to=${weekTo}`,
+            { headers: authHeader },
+          );
+          if (res.ok) {
+            const comps: TaskCompletionResponse[] = await res.json();
+            for (const c of comps) {
+              const key = `${c.taskId}|${c.completedDate}`;
+              keys.add(key);
+              idMap[key] = c.completionId;
+            }
+          }
+        }),
+      );
+      setCompletionKeys(keys);
+      setCompletionIdMap(idMap);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -91,113 +152,118 @@ export default function TeacherTasks() {
     }
   }
 
-  // ── Mark task as done ──────────────────────────────────────────────────────
+  function isDone(taskId: number, date: string): boolean {
+    return completionKeys.has(`${taskId}|${date}`);
+  }
+
+  // ── Mark done ─────────────────────────────────────────────────────────────
 
   async function handleMarkDone(task: TaskResponse) {
     try {
       setMarkingTaskId(task.taskId);
-
       const res = await fetch(`${BASE_URL}/api/tasks/complete`, {
         method: "POST",
         headers: authHeader,
-        body: JSON.stringify({
-          taskId: task.taskId,
-          completedDate: today,
-        }),
+        body: JSON.stringify({ taskId: task.taskId, completedDate: today }),
       });
-
       if (res.status === 400) {
-        const text = await res.text();
-        toast.warning(text || "Task already marked as done today");
+        toast.warning((await res.text()) || "Already marked done today");
         return;
       }
-      if (!res.ok) throw new Error("Failed to mark task as done");
-
+      if (!res.ok) throw new Error();
       const completion: TaskCompletionResponse = await res.json();
-      toast.success(`"${completion.taskTitle}" marked as done!`);
-
-      // ✅ update local state — change status to DONE
-      setTasksByRoom((prev) => {
-        const updated = { ...prev };
-        const roomTasks = updated[task.roomNumber] || [];
-        updated[task.roomNumber] = roomTasks.map((t: TaskResponse) =>
-          t.taskId === task.taskId ? { ...t, status: "DONE" } : t,
-        );
-        return updated;
-      });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to mark task as done");
+      const key = `${task.taskId}|${today}`;
+      setCompletionKeys((prev) => new Set(prev).add(key));
+      setCompletionIdMap((prev) => ({
+        ...prev,
+        [key]: completion.completionId,
+      }));
+      toast.success(`"${task.title}" marked as done!`);
+    } catch {
+      toast.error("Failed to mark task as done");
     } finally {
       setMarkingTaskId(null);
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Unmark done ───────────────────────────────────────────────────────────
+
+  async function handleUnmark(task: TaskResponse) {
+    try {
+      setMarkingTaskId(task.taskId);
+      const res = await fetch(
+        `${BASE_URL}/api/tasks/${task.taskId}/complete/${today}`,
+        {
+          method: "DELETE",
+          headers: authHeader,
+        },
+      );
+      if (!res.ok) throw new Error();
+      const key = `${task.taskId}|${today}`;
+      setCompletionKeys((prev) => {
+        const s = new Set(prev);
+        s.delete(key);
+        return s;
+      });
+      setCompletionIdMap((prev) => {
+        const m = { ...prev };
+        delete m[key];
+        return m;
+      });
+      toast.success(`"${task.title}" unmarked`);
+    } catch {
+      toast.error("Failed to unmark task");
+    } finally {
+      setMarkingTaskId(null);
+    }
+  }
 
   function getTaskForDay(
     roomNumber: string,
     day: string,
   ): TaskResponse | undefined {
     return tasksByRoom[roomNumber]?.find(
-      (t: TaskResponse) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
+      (t) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
     );
   }
 
-  function todayName(): string {
-    return new Date().toLocaleDateString("en-US", { weekday: "long" });
+  function statusBadge(done: boolean, hasTask: boolean) {
+    if (!hasTask)
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+          <XCircle className="w-3 h-3" />
+          No task
+        </span>
+      );
+    return done ? (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <CheckCircle2 className="w-3 h-3" />
+        Done
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+        <Clock className="w-3 h-3" />
+        Pending
+      </span>
+    );
   }
 
-  function isTaskDay(task: TaskResponse): boolean {
-    return task.dayOfWeek.toLowerCase() === todayName().toLowerCase();
-  }
-
-  function statusBadge(status: string) {
-    switch (status?.toUpperCase()) {
-      case "DONE":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            <CheckCircle2 className="w-3 h-3" />
-            Done
-          </span>
-        );
-      case "PENDING":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-            <Clock className="w-3 h-3" />
-            Pending
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-            <XCircle className="w-3 h-3" />
-            No task
-          </span>
-        );
-    }
-  }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500 text-sm">Loading tasks...</p>
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-red-500 text-sm">Error: {error}</p>
       </div>
     );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">
@@ -214,19 +280,18 @@ export default function TeacherTasks() {
         </Link>
       </div>
 
-      {/* Today Banner */}
+      {/* Today banner */}
       <Card className="p-4 bg-blue-50 border-blue-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <CalendarDays className="w-5 h-5 text-blue-600" />
             <div>
-              <p className="font-medium text-gray-900">
-                Today is {todayName()}
-              </p>
+              <p className="font-medium text-gray-900">Today is {todayName}</p>
               <p className="text-sm text-gray-600">
-                Blue rows are today's tasks — click{" "}
-                <span className="font-medium text-green-600">Mark Done</span> to
-                complete them
+                Click{" "}
+                <span className="font-medium text-green-600">Mark Done</span> on
+                today's task when complete. You can also unmark if you made a
+                mistake.
               </p>
             </div>
           </div>
@@ -240,21 +305,20 @@ export default function TeacherTasks() {
         </div>
       </Card>
 
-      {/* No rooms */}
       {myRooms.length === 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500">No rooms assigned to you</p>
         </Card>
       )}
 
-      {/* Tasks for each room */}
-      {myRooms.map((room: RoomInfo) => {
+      {myRooms.map((room) => {
         const tasks: TaskResponse[] = tasksByRoom[room.roomNumber] || [];
-        const todayTask = tasks.find((t: TaskResponse) => isTaskDay(t));
+        const todayTask = tasks.find(
+          (t) => t.dayOfWeek.toLowerCase() === todayName.toLowerCase(),
+        );
 
         return (
           <Card key={room.roomId} className="overflow-hidden">
-            {/* Room Header */}
             <div className="bg-gray-50 px-6 py-4 border-b">
               <div className="flex items-center justify-between">
                 <div>
@@ -270,21 +334,18 @@ export default function TeacherTasks() {
                     )}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      room.side.toLowerCase() === "girls"
-                        ? "secondary"
-                        : "default"
-                    }
-                  >
-                    {room.side} Side
-                  </Badge>
-                </div>
+                <Badge
+                  variant={
+                    room.side.toLowerCase() === "girls"
+                      ? "secondary"
+                      : "default"
+                  }
+                >
+                  {room.side} Side
+                </Badge>
               </div>
             </div>
 
-            {/* Task Table */}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -293,23 +354,18 @@ export default function TeacherTasks() {
                   <TableHead>Description</TableHead>
                   <TableHead className="w-28">Time</TableHead>
                   <TableHead className="w-28">Status</TableHead>
-                  <TableHead className="w-32">Action</TableHead>
+                  <TableHead className="w-40">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {DAYS.map((day: string) => {
-                  const task: TaskResponse | undefined = getTaskForDay(
-                    room.roomNumber,
-                    day,
-                  );
-                  const isToday =
-                    day.toLowerCase() === todayName().toLowerCase();
+                {DAYS.map((day) => {
+                  const task = getTaskForDay(room.roomNumber, day);
+                  const isToday = day.toLowerCase() === todayName.toLowerCase();
                   const isMarking = markingTaskId === task?.taskId;
-                  const isDone = task?.status?.toUpperCase() === "DONE";
+                  const done = task ? isDone(task.taskId, today) : false;
 
                   return (
                     <TableRow key={day} className={isToday ? "bg-blue-50" : ""}>
-                      {/* Day */}
                       <TableCell>
                         <Badge
                           variant={isToday ? "default" : "outline"}
@@ -318,8 +374,6 @@ export default function TeacherTasks() {
                           {day}
                         </Badge>
                       </TableCell>
-
-                      {/* Title */}
                       <TableCell className="font-medium text-gray-900">
                         {task?.title ?? (
                           <span className="text-gray-400 font-normal">
@@ -327,39 +381,38 @@ export default function TeacherTasks() {
                           </span>
                         )}
                       </TableCell>
-
-                      {/* Description */}
                       <TableCell className="text-sm text-gray-600">
                         {task?.description ?? "—"}
                       </TableCell>
-
-                      {/* Time */}
                       <TableCell className="text-sm text-gray-600">
                         {task?.taskTime ?? "—"}
                       </TableCell>
-
-                      {/* Status */}
-                      <TableCell>{statusBadge(task?.status ?? "")}</TableCell>
-
-                      {/* Action — only show on today's task row */}
+                      <TableCell>{statusBadge(done, !!task)}</TableCell>
                       <TableCell>
-                        {task && isToday && !isDone && (
+                        {task && isToday && !done && (
                           <button
                             onClick={() => handleMarkDone(task)}
                             disabled={isMarking}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              isMarking
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-green-600 text-white hover:bg-green-700"
-                            }`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isMarking ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"}`}
                           >
                             {isMarking ? "Saving..." : "Mark Done"}
                           </button>
                         )}
-                        {task && isToday && isDone && (
-                          <span className="text-xs text-green-600 font-medium">
-                            ✓ Completed
-                          </span>
+                        {task && isToday && done && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-green-600 font-medium">
+                              ✓ Completed
+                            </span>
+                            <button
+                              onClick={() => handleUnmark(task)}
+                              disabled={isMarking}
+                              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Undo"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Undo
+                            </button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

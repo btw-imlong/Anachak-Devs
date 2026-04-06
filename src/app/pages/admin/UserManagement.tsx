@@ -34,12 +34,89 @@ import {
   deleteUser,
 } from "../../service/users";
 import type { User } from "../../service/users";
+import { BASE_URL } from "../../config/api";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface TeacherForm {
+  name: string;
+  email: string;
+  password: string;
+  idCardNumber: string;
+}
+
+interface StudentForm {
+  name: string;
+  email: string;
+  password: string;
+  idCardNumber: string;
+  roomNumber: string;
+}
+
+interface UpdateTeacherForm {
+  name: string;
+  email: string;
+  idCardNumber: string;
+}
+
+interface UpdateStudentForm {
+  name: string;
+  email: string;
+  idCardNumber: string;
+  roomNumber: string;
+}
+
+const EMPTY_TEACHER: TeacherForm = {
+  name: "",
+  email: "",
+  password: "",
+  idCardNumber: "",
+};
+
+const EMPTY_STUDENT: StudentForm = {
+  name: "",
+  email: "",
+  password: "",
+  idCardNumber: "",
+  roomNumber: "",
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function UserManagement() {
-  const [teacherDialogOpen, setTeacherDialogOpen] = useState(false);
-  const [studentDialogOpen, setStudentDialogOpen] = useState(false);
-
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // ── Create state ──────────────────────────────────────────────────────────
+  const [teacherDialogOpen, setTeacherDialogOpen] = useState<boolean>(false);
+  const [studentDialogOpen, setStudentDialogOpen] = useState<boolean>(false);
+  const [teacherForm, setTeacherForm] = useState<TeacherForm>(EMPTY_TEACHER);
+  const [studentForm, setStudentForm] = useState<StudentForm>(EMPTY_STUDENT);
+  const [teacherLoading, setTeacherLoading] = useState<boolean>(false);
+  const [studentLoading, setStudentLoading] = useState<boolean>(false);
+
+  // ── Edit state ────────────────────────────────────────────────────────────
+  const [editTeacherOpen, setEditTeacherOpen] = useState<boolean>(false);
+  const [editStudentOpen, setEditStudentOpen] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [updateTeacherForm, setUpdateTeacherForm] = useState<UpdateTeacherForm>(
+    { name: "", email: "", idCardNumber: "" },
+  );
+  const [updateStudentForm, setUpdateStudentForm] = useState<UpdateStudentForm>(
+    { name: "", email: "", idCardNumber: "", roomNumber: "" },
+  );
+  const [editLoading, setEditLoading] = useState<boolean>(false);
+
+  // ── Delete state ──────────────────────────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+
+  const token = localStorage.getItem("token");
+  const authHeader = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 
   const teachers = users.filter(
     (u) => u.role === "TEACHER" || u.role === "ROLE_TEACHER",
@@ -49,90 +126,203 @@ export default function UserManagement() {
   );
 
   useEffect(() => {
-    getAllUsers().then(setUsers).catch(console.error);
+    fetchUsers();
   }, []);
 
-  // ── Teacher form ───────────────────────────────────────
-  const [teacherForm, setTeacherForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    idCardNumber: "",
-  });
-  const [teacherLoading, setTeacherLoading] = useState(false);
+  async function fetchUsers() {
+    try {
+      setLoading(true);
+      const data = await getAllUsers();
+      setUsers(data);
+    } catch {
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const handleCreateTeacher = async () => {
+  // ── Create teacher ─────────────────────────────────────────────────────────
+
+  async function handleCreateTeacher() {
+    if (
+      !teacherForm.name ||
+      !teacherForm.email ||
+      !teacherForm.password ||
+      !teacherForm.idCardNumber
+    ) {
+      toast.warning("Please fill in all fields");
+      return;
+    }
     try {
       setTeacherLoading(true);
       await createTeacher(teacherForm);
-      const updated = await getAllUsers();
-      setUsers(updated);
+      await fetchUsers();
       setTeacherDialogOpen(false);
-      setTeacherForm({ name: "", email: "", password: "", idCardNumber: "" });
+      setTeacherForm(EMPTY_TEACHER);
       toast.success("Teacher account created successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to create teacher!");
+    } catch {
+      toast.error("Failed to create teacher");
     } finally {
       setTeacherLoading(false);
     }
-  };
+  }
 
-  // ── Student form ───────────────────────────────────────
-  const [studentForm, setStudentForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    idCardNumber: "",
-    roomNumber: "",
-  });
-  const [studentLoading, setStudentLoading] = useState(false);
+  // ── Create student ─────────────────────────────────────────────────────────
 
-  const handleCreateStudent = async () => {
+  async function handleCreateStudent() {
+    if (
+      !studentForm.name ||
+      !studentForm.email ||
+      !studentForm.password ||
+      !studentForm.idCardNumber
+    ) {
+      toast.warning("Please fill in all required fields");
+      return;
+    }
     try {
       setStudentLoading(true);
       await createStudent(studentForm);
-      const updated = await getAllUsers();
-      setUsers(updated);
+      await fetchUsers();
       setStudentDialogOpen(false);
-      setStudentForm({
-        name: "",
-        email: "",
-        password: "",
-        idCardNumber: "",
-        roomNumber: "",
-      });
+      setStudentForm(EMPTY_STUDENT);
       toast.success("Student account created successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to create student!");
+    } catch {
+      toast.error("Failed to create student");
     } finally {
       setStudentLoading(false);
     }
-  };
+  }
 
-  // ── Delete ─────────────────────────────────────────────
-  const handleDelete = async (id: string) => {
+  // ── Open edit ──────────────────────────────────────────────────────────────
+
+  function openEditTeacher(user: User) {
+    setSelectedUser(user);
+    setUpdateTeacherForm({
+      name: user.name,
+      email: user.email,
+      idCardNumber: "",
+    });
+    setEditTeacherOpen(true);
+  }
+
+  function openEditStudent(user: User) {
+    setSelectedUser(user);
+    setUpdateStudentForm({
+      name: user.name,
+      email: user.email,
+      idCardNumber: "",
+      roomNumber: "",
+    });
+    setEditStudentOpen(true);
+  }
+
+  // ── Update teacher ─────────────────────────────────────────────────────────
+
+  async function handleUpdateTeacher() {
+    if (!selectedUser) return;
     try {
-      await deleteUser(id);
-      const updated = await getAllUsers();
-      setUsers(updated);
-      toast.success("User deleted successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete user!");
+      setEditLoading(true);
+      const res = await fetch(
+        `${BASE_URL}/api/users/teacher/${selectedUser.id}`,
+        {
+          method: "PUT",
+          headers: authHeader,
+          body: JSON.stringify(updateTeacherForm),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to update teacher");
+      await fetchUsers();
+      setEditTeacherOpen(false);
+      setSelectedUser(null);
+      toast.success("Teacher updated successfully!");
+    } catch {
+      toast.error("Failed to update teacher");
+    } finally {
+      setEditLoading(false);
     }
-  };
+  }
+
+  // ── Update student ─────────────────────────────────────────────────────────
+
+  async function handleUpdateStudent() {
+    if (!selectedUser) return;
+    try {
+      setEditLoading(true);
+      const res = await fetch(
+        `${BASE_URL}/api/users/student/${selectedUser.id}`,
+        {
+          method: "PUT",
+          headers: authHeader,
+          body: JSON.stringify(updateStudentForm),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to update student");
+      await fetchUsers();
+      setEditStudentOpen(false);
+      setSelectedUser(null);
+      toast.success("Student updated successfully!");
+    } catch {
+      toast.error("Failed to update student");
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+
+  function openDelete(user: User) {
+    setDeleteTarget(user);
+    setDeleteOpen(true);
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      setDeleteLoading(true);
+      await deleteUser(deleteTarget.id);
+      await fetchUsers();
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      toast.success("User deleted successfully!");
+    } catch {
+      toast.error("Failed to delete user");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
+
+  // ── Role display ───────────────────────────────────────────────────────────
+
+  function roleLabel(role: string): string {
+    return (
+      role.replace("ROLE_", "").charAt(0) +
+      role.replace("ROLE_", "").slice(1).toLowerCase()
+    );
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-sm">Loading users...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <Tabs defaultValue="teachers" className="w-full">
         <TabsList>
-          <TabsTrigger value="teachers">Teachers</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="teachers">
+            Teachers ({teachers.length})
+          </TabsTrigger>
+          <TabsTrigger value="students">
+            Students ({students.length})
+          </TabsTrigger>
         </TabsList>
 
-        {/* ── Teachers Tab ── */}
+        {/* ── Teachers Tab ──────────────────────────────────────────────────── */}
         <TabsContent value="teachers" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -150,7 +340,7 @@ export default function UserManagement() {
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Create Teacher Account
+                  Create Teacher
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
@@ -159,7 +349,9 @@ export default function UserManagement() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Full Name</Label>
+                    <Label>
+                      Full Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       placeholder="Enter teacher name"
                       value={teacherForm.name}
@@ -169,7 +361,9 @@ export default function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email Address</Label>
+                    <Label>
+                      Email <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="email"
                       placeholder="teacher@school.edu"
@@ -183,7 +377,9 @@ export default function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Password</Label>
+                    <Label>
+                      Password <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="password"
                       placeholder="Enter password"
@@ -197,7 +393,9 @@ export default function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>ID Card Number</Label>
+                    <Label>
+                      ID Card Number <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       placeholder="Enter ID card number"
                       value={teacherForm.idCardNumber}
@@ -209,7 +407,7 @@ export default function UserManagement() {
                       }
                     />
                   </div>
-                  <div className="flex gap-2 pt-4">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       className="flex-1"
                       onClick={handleCreateTeacher}
@@ -259,19 +457,26 @@ export default function UserManagement() {
                         {teacher.email}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{teacher.role}</Badge>
+                        <Badge variant="secondary">
+                          {roleLabel(teacher.role)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditTeacher(teacher)}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(teacher.id)}
+                            onClick={() => openDelete(teacher)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -283,7 +488,7 @@ export default function UserManagement() {
           </Card>
         </TabsContent>
 
-        {/* ── Students Tab ── */}
+        {/* ── Students Tab ───────────────────────────────────────────────────── */}
         <TabsContent value="students" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -291,7 +496,7 @@ export default function UserManagement() {
                 Student Accounts
               </h2>
               <p className="text-sm text-gray-500">
-                Manage student accounts and service assignments
+                Manage student accounts and room assignments
               </p>
             </div>
             <Dialog
@@ -301,7 +506,7 @@ export default function UserManagement() {
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Create Student Account
+                  Create Student
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
@@ -310,7 +515,9 @@ export default function UserManagement() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Full Name</Label>
+                    <Label>
+                      Full Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       placeholder="Enter student name"
                       value={studentForm.name}
@@ -320,7 +527,9 @@ export default function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email Address</Label>
+                    <Label>
+                      Email <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="email"
                       placeholder="student@school.edu"
@@ -334,7 +543,9 @@ export default function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Password</Label>
+                    <Label>
+                      Password <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="password"
                       placeholder="Enter password"
@@ -347,9 +558,10 @@ export default function UserManagement() {
                       }
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>ID Card Number</Label>
+                    <Label>
+                      ID Card Number <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       placeholder="Enter ID card number"
                       value={studentForm.idCardNumber}
@@ -364,7 +576,7 @@ export default function UserManagement() {
                   <div className="space-y-2">
                     <Label>Room Number</Label>
                     <Input
-                      placeholder="Enter room number"
+                      placeholder="Optional — assign room later"
                       value={studentForm.roomNumber}
                       onChange={(e) =>
                         setStudentForm({
@@ -374,8 +586,7 @@ export default function UserManagement() {
                       }
                     />
                   </div>
-
-                  <div className="flex gap-2 pt-4">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       className="flex-1"
                       onClick={handleCreateStudent}
@@ -425,19 +636,26 @@ export default function UserManagement() {
                         {student.email}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{student.role}</Badge>
+                        <Badge variant="secondary">
+                          {roleLabel(student.role)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditStudent(student)}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(student.id)}
+                            onClick={() => openDelete(student)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -449,6 +667,182 @@ export default function UserManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ── Edit Teacher Modal ─────────────────────────────────────────────── */}
+      <Dialog open={editTeacherOpen} onOpenChange={setEditTeacherOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Teacher</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={updateTeacherForm.name}
+                onChange={(e) =>
+                  setUpdateTeacherForm({
+                    ...updateTeacherForm,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={updateTeacherForm.email}
+                onChange={(e) =>
+                  setUpdateTeacherForm({
+                    ...updateTeacherForm,
+                    email: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ID Card Number</Label>
+              <Input
+                placeholder="Leave empty to keep current"
+                value={updateTeacherForm.idCardNumber}
+                onChange={(e) =>
+                  setUpdateTeacherForm({
+                    ...updateTeacherForm,
+                    idCardNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="flex-1"
+                onClick={handleUpdateTeacher}
+                disabled={editLoading}
+              >
+                {editLoading ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setEditTeacherOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Student Modal ─────────────────────────────────────────────── */}
+      <Dialog open={editStudentOpen} onOpenChange={setEditStudentOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={updateStudentForm.name}
+                onChange={(e) =>
+                  setUpdateStudentForm({
+                    ...updateStudentForm,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={updateStudentForm.email}
+                onChange={(e) =>
+                  setUpdateStudentForm({
+                    ...updateStudentForm,
+                    email: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ID Card Number</Label>
+              <Input
+                placeholder="Leave empty to keep current"
+                value={updateStudentForm.idCardNumber}
+                onChange={(e) =>
+                  setUpdateStudentForm({
+                    ...updateStudentForm,
+                    idCardNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Room Number</Label>
+              <Input
+                placeholder="Leave empty to keep current"
+                value={updateStudentForm.roomNumber}
+                onChange={(e) =>
+                  setUpdateStudentForm({
+                    ...updateStudentForm,
+                    roomNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="flex-1"
+                onClick={handleUpdateStudent}
+                disabled={editLoading}
+              >
+                {editLoading ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setEditStudentOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirm Modal ───────────────────────────────────────────── */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-900">
+                {deleteTarget?.name ?? ""}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Deleting..." : "Delete"}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
