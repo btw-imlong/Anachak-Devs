@@ -313,18 +313,24 @@ export default function UserManagement() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="teachers" className="w-full">
-        <TabsList>
-          <TabsTrigger value="teachers">
-            Teachers ({teachers.length})
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="teachers" className="flex-1 sm:flex-none">
+            <span className="sm:hidden">Teachers ({teachers.length})</span>
+            <span className="hidden sm:inline">
+              Teachers ({teachers.length})
+            </span>
           </TabsTrigger>
-          <TabsTrigger value="students">
-            Students ({students.length})
+          <TabsTrigger value="students" className="flex-1 sm:flex-none">
+            <span className="sm:hidden">Students ({students.length})</span>
+            <span className="hidden sm:inline">
+              Students ({students.length})
+            </span>
           </TabsTrigger>
         </TabsList>
 
         {/* ── Teachers Tab ──────────────────────────────────────────────────── */}
         <TabsContent value="teachers" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Teacher Accounts
@@ -338,12 +344,12 @@ export default function UserManagement() {
               onOpenChange={setTeacherDialogOpen}
             >
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Create Teacher
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
                 <DialogHeader>
                   <DialogTitle>Create Teacher Account</DialogTitle>
                 </DialogHeader>
@@ -407,7 +413,14 @@ export default function UserManagement() {
                       }
                     />
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => setTeacherDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       className="flex-1"
                       onClick={handleCreateTeacher}
@@ -415,82 +428,90 @@ export default function UserManagement() {
                     >
                       {teacherLoading ? "Creating..." : "Create Account"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setTeacherDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
 
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teachers.length === 0 ? (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-gray-400 py-6"
-                    >
-                      No teachers found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Email
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  teachers.map((teacher) => (
-                    <TableRow key={teacher.id}>
-                      <TableCell className="font-medium">
-                        {teacher.name}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {teacher.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {roleLabel(teacher.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditTeacher(teacher)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDelete(teacher)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {teachers.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-gray-400 py-6"
+                      >
+                        No teachers found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    teachers.map((teacher) => (
+                      <TableRow key={teacher.id}>
+                        <TableCell>
+                          <div className="font-medium">{teacher.name}</div>
+                          {/* Email shown below name on mobile */}
+                          <div className="text-xs text-gray-500 sm:hidden">
+                            {teacher.email}
+                          </div>
+                          {/* Role shown below name on small screens */}
+                          <div className="mt-1 md:hidden">
+                            <Badge variant="secondary">
+                              {roleLabel(teacher.role)}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-gray-600">
+                          {teacher.email}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="secondary">
+                            {roleLabel(teacher.role)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditTeacher(teacher)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDelete(teacher)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* ── Students Tab ───────────────────────────────────────────────────── */}
         <TabsContent value="students" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Student Accounts
@@ -504,12 +525,12 @@ export default function UserManagement() {
               onOpenChange={setStudentDialogOpen}
             >
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Create Student
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
                 <DialogHeader>
                   <DialogTitle>Create Student Account</DialogTitle>
                 </DialogHeader>
@@ -586,7 +607,14 @@ export default function UserManagement() {
                       }
                     />
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => setStudentDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       className="flex-1"
                       onClick={handleCreateStudent}
@@ -594,83 +622,91 @@ export default function UserManagement() {
                     >
                       {studentLoading ? "Creating..." : "Create Account"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setStudentDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
 
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.length === 0 ? (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-gray-400 py-6"
-                    >
-                      No students found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Email
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  students.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
-                        {student.name}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {student.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {roleLabel(student.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditStudent(student)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDelete(student)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {students.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-gray-400 py-6"
+                      >
+                        No students found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    students.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell>
+                          <div className="font-medium">{student.name}</div>
+                          {/* Email shown below name on mobile */}
+                          <div className="text-xs text-gray-500 sm:hidden">
+                            {student.email}
+                          </div>
+                          {/* Role shown below name on small screens */}
+                          <div className="mt-1 md:hidden">
+                            <Badge variant="secondary">
+                              {roleLabel(student.role)}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-gray-600">
+                          {student.email}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="secondary">
+                            {roleLabel(student.role)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditStudent(student)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDelete(student)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
 
       {/* ── Edit Teacher Modal ─────────────────────────────────────────────── */}
       <Dialog open={editTeacherOpen} onOpenChange={setEditTeacherOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
           </DialogHeader>
@@ -713,19 +749,20 @@ export default function UserManagement() {
                 }
               />
             </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setEditTeacherOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button
                 className="flex-1"
                 onClick={handleUpdateTeacher}
                 disabled={editLoading}
               >
                 {editLoading ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setEditTeacherOpen(false)}
-              >
-                Cancel
               </Button>
             </div>
           </div>
@@ -734,7 +771,7 @@ export default function UserManagement() {
 
       {/* ── Edit Student Modal ─────────────────────────────────────────────── */}
       <Dialog open={editStudentOpen} onOpenChange={setEditStudentOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
           </DialogHeader>
@@ -790,19 +827,20 @@ export default function UserManagement() {
                 }
               />
             </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setEditStudentOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button
                 className="flex-1"
                 onClick={handleUpdateStudent}
                 disabled={editLoading}
               >
                 {editLoading ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setEditStudentOpen(false)}
-              >
-                Cancel
               </Button>
             </div>
           </div>
@@ -811,7 +849,7 @@ export default function UserManagement() {
 
       {/* ── Delete Confirm Modal ───────────────────────────────────────────── */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
           </DialogHeader>
@@ -823,14 +861,7 @@ export default function UserManagement() {
               </span>
               ? This action cannot be undone.
             </p>
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 bg-red-600 hover:bg-red-700"
-                onClick={handleDelete}
-                disabled={deleteLoading}
-              >
-                {deleteLoading ? "Deleting..." : "Delete"}
-              </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -838,6 +869,13 @@ export default function UserManagement() {
                 disabled={deleteLoading}
               >
                 Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Deleting..." : "Delete"}
               </Button>
             </div>
           </div>

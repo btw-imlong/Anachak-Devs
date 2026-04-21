@@ -137,7 +137,8 @@ export default function ServiceManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Service Management
@@ -146,16 +147,16 @@ export default function ServiceManagement() {
             Create and assign student services and duties
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           {/* Create Service Dialog */}
           <Dialog open={createServiceOpen} onOpenChange={setCreateServiceOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Service
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
               <DialogHeader>
                 <DialogTitle>Create New Service</DialogTitle>
               </DialogHeader>
@@ -184,19 +185,20 @@ export default function ServiceManagement() {
                     }
                   />
                 </div>
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => setCreateServiceOpen(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     className="flex-1"
                     onClick={handleCreateService}
                     disabled={serviceLoading}
                   >
                     {serviceLoading ? "Creating..." : "Create Service"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCreateServiceOpen(false)}
-                  >
-                    Cancel
                   </Button>
                 </div>
               </div>
@@ -206,12 +208,12 @@ export default function ServiceManagement() {
           {/* Assign Service Dialog */}
           <Dialog open={assignServiceOpen} onOpenChange={setAssignServiceOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Assign to Student
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
               <DialogHeader>
                 <DialogTitle>Assign Service to Student</DialogTitle>
               </DialogHeader>
@@ -255,19 +257,20 @@ export default function ServiceManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => setAssignServiceOpen(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     className="flex-1"
                     onClick={handleAssignService}
                     disabled={assignLoading}
                   >
                     {assignLoading ? "Assigning..." : "Assign Service"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAssignServiceOpen(false)}
-                  >
-                    Cancel
                   </Button>
                 </div>
               </div>
@@ -288,10 +291,10 @@ export default function ServiceManagement() {
               serviceStudentsMap[service.serviceId] ?? [];
 
             return (
-              <Card key={service.serviceId} className="p-6">
+              <Card key={service.serviceId} className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">
                         {service.name}
                       </h3>
@@ -304,7 +307,7 @@ export default function ServiceManagement() {
                       {service.description}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button variant="ghost" size="sm">
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -323,7 +326,7 @@ export default function ServiceManagement() {
                     <p className="text-sm font-medium text-gray-700 mb-3">
                       Assigned Students:
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                       {assignedStudents.map((student) => (
                         <div
                           key={student.assignmentId}
@@ -355,7 +358,7 @@ export default function ServiceManagement() {
       </div>
 
       {/* Service Examples Section */}
-      <Card className="p-6 bg-blue-50 border-blue-200">
+      <Card className="p-4 sm:p-6 bg-blue-50 border-blue-200">
         <h3 className="font-semibold text-gray-900 mb-2">Example Services</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-3 bg-white rounded-lg">

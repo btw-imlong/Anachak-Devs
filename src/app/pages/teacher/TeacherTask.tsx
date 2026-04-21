@@ -25,6 +25,7 @@ interface RoomOption {
   roomNumber: string;
   side: string;
 }
+
 const DAYS: string[] = [
   "Monday",
   "Tuesday",
@@ -124,21 +125,21 @@ export default function AllRoomsTasks() {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
             <CheckCircle2 className="w-3 h-3" />
-            Done
+            <span className="hidden sm:inline">Done</span>
           </span>
         );
       case "PENDING":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
             <Clock className="w-3 h-3" />
-            Pending
+            <span className="hidden sm:inline">Pending</span>
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
             <XCircle className="w-3 h-3" />
-            No task
+            <span className="hidden sm:inline">No task</span>
           </span>
         );
     }
@@ -175,6 +176,7 @@ export default function AllRoomsTasks() {
           <Filter className="w-4 h-4 text-gray-500" />
           <p className="text-sm font-medium text-gray-700">Filters</p>
         </div>
+        {/* 2-col on mobile, 4-col on md */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Side</p>
@@ -236,6 +238,8 @@ export default function AllRoomsTasks() {
             </Select>
           </div>
         </div>
+
+        {/* Active filter chips */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
           {filterSide !== "ALL" && (
             <span className="px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">
@@ -291,8 +295,8 @@ export default function AllRoomsTasks() {
           return null;
         return (
           <Card key={room.id} className="overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900">
                     Room {room.roomNumber}
@@ -313,97 +317,129 @@ export default function AllRoomsTasks() {
                 </Badge>
               </div>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-32">Day</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-28">Time</TableHead>
-                  <TableHead className="w-28">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filterDay === "ALL" ? (
-                  daysToShow.map((day) => {
-                    const task = tasks.find(
-                      (t) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
-                    );
-                    const isToday =
-                      day.toLowerCase() === todayName.toLowerCase();
-                    if (filterStatus !== "ALL" && !task) return null;
-                    return (
-                      <TableRow
-                        key={day}
-                        className={isToday ? "bg-blue-50" : ""}
-                      >
-                        <TableCell>
-                          <Badge
-                            variant={isToday ? "default" : "outline"}
-                            className={isToday ? "bg-blue-600 text-white" : ""}
-                          >
-                            {day}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium text-gray-900">
-                          {task?.title ?? (
-                            <span className="text-gray-400 font-normal">
-                              No task assigned
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {task?.description ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {task?.taskTime ?? "—"}
-                        </TableCell>
-                        <TableCell>{statusBadge(task?.status ?? "")}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : tasks.length === 0 ? (
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-gray-400 py-6"
-                    >
-                      No tasks for {filterDay}
-                    </TableCell>
+                    <TableHead className="w-24 sm:w-32">Day</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Description
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell w-24">
+                      Time
+                    </TableHead>
+                    <TableHead className="w-16 sm:w-28">Status</TableHead>
                   </TableRow>
-                ) : (
-                  tasks.map((task) => {
-                    const isToday =
-                      task.dayOfWeek.toLowerCase() === todayName.toLowerCase();
-                    return (
-                      <TableRow
-                        key={task.taskId}
-                        className={isToday ? "bg-blue-50" : ""}
+                </TableHeader>
+                <TableBody>
+                  {filterDay === "ALL" ? (
+                    daysToShow.map((day) => {
+                      const task = tasks.find(
+                        (t) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
+                      );
+                      const isToday =
+                        day.toLowerCase() === todayName.toLowerCase();
+                      if (filterStatus !== "ALL" && !task) return null;
+                      return (
+                        <TableRow
+                          key={day}
+                          className={isToday ? "bg-blue-50" : ""}
+                        >
+                          <TableCell>
+                            <Badge
+                              variant={isToday ? "default" : "outline"}
+                              className={
+                                isToday ? "bg-blue-600 text-white" : ""
+                              }
+                            >
+                              <span className="sm:hidden">
+                                {day.slice(0, 3)}
+                              </span>
+                              <span className="hidden sm:inline">{day}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium text-gray-900 text-sm">
+                            {task?.title ?? (
+                              <span className="text-gray-400 font-normal">
+                                No task assigned
+                              </span>
+                            )}
+                            {task?.taskTime && (
+                              <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                                {task.taskTime}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm text-gray-600">
+                            {task?.description ?? "—"}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-gray-600">
+                            {task?.taskTime ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            {statusBadge(task?.status ?? "")}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : tasks.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-gray-400 py-6"
                       >
-                        <TableCell>
-                          <Badge
-                            variant={isToday ? "default" : "outline"}
-                            className={isToday ? "bg-blue-600 text-white" : ""}
-                          >
-                            {task.dayOfWeek}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium text-gray-900">
-                          {task.title}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {task.description ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {task.taskTime ?? "—"}
-                        </TableCell>
-                        <TableCell>{statusBadge(task.status)}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                        No tasks for {filterDay}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    tasks.map((task) => {
+                      const isToday =
+                        task.dayOfWeek.toLowerCase() ===
+                        todayName.toLowerCase();
+                      return (
+                        <TableRow
+                          key={task.taskId}
+                          className={isToday ? "bg-blue-50" : ""}
+                        >
+                          <TableCell>
+                            <Badge
+                              variant={isToday ? "default" : "outline"}
+                              className={
+                                isToday ? "bg-blue-600 text-white" : ""
+                              }
+                            >
+                              <span className="sm:hidden">
+                                {task.dayOfWeek.slice(0, 3)}
+                              </span>
+                              <span className="hidden sm:inline">
+                                {task.dayOfWeek}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium text-gray-900 text-sm">
+                            {task.title}
+                            {task.taskTime && (
+                              <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                                {task.taskTime}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm text-gray-600">
+                            {task.description ?? "—"}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-gray-600">
+                            {task.taskTime ?? "—"}
+                          </TableCell>
+                          <TableCell>{statusBadge(task.status)}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         );
       })}

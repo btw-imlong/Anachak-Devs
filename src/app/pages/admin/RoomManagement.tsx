@@ -332,7 +332,7 @@ export default function RoomManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Room Management
@@ -342,7 +342,7 @@ export default function RoomManagement() {
           </p>
         </div>
         <Button
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
           onClick={() => setCreateRoomOpen(true)}
         >
           <Plus className="w-4 h-4 mr-2" /> Create Room
@@ -353,12 +353,12 @@ export default function RoomManagement() {
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <Home className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Rooms</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-500">Total Rooms</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
                 {allRooms.length}
               </p>
             </div>
@@ -366,12 +366,14 @@ export default function RoomManagement() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <Users className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Unassigned Students</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-500 leading-tight">
+                Unassigned Students
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
                 {unassignedStudents.length}
               </p>
             </div>
@@ -379,12 +381,12 @@ export default function RoomManagement() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <UserCheck className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Teachers</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-500">Total Teachers</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
                 {allTeachers.length}
               </p>
             </div>
@@ -393,18 +395,20 @@ export default function RoomManagement() {
       </div>
 
       <Tabs defaultValue="rooms">
-        <TabsList>
-          <TabsTrigger value="rooms">Rooms ({allRooms.length})</TabsTrigger>
-          <TabsTrigger value="assign-teacher">Assign Teacher</TabsTrigger>
-          <TabsTrigger value="assign-students">
-            Assign Students
-            {unassignedStudents.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs">
-                {unassignedStudents.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="w-max">
+            <TabsTrigger value="rooms">Rooms ({allRooms.length})</TabsTrigger>
+            <TabsTrigger value="assign-teacher">Assign Teacher</TabsTrigger>
+            <TabsTrigger value="assign-students">
+              Assign Students
+              {unassignedStudents.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs">
+                  {unassignedStudents.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Tab 1: Rooms Overview ─────────────────────────────────────── */}
         <TabsContent value="rooms" className="space-y-4">
@@ -426,114 +430,118 @@ export default function RoomManagement() {
           </div>
 
           <Card className="overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Side</TableHead>
-                  <TableHead>Assigned Teacher</TableHead>
-                  <TableHead>Students</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRooms.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-gray-400 py-8"
-                    >
-                      No rooms found
-                    </TableCell>
+                    <TableHead>Room</TableHead>
+                    <TableHead>Side</TableHead>
+                    <TableHead>Assigned Teacher</TableHead>
+                    <TableHead>Students</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredRooms.map((room) => (
-                    <TableRow key={room.id}>
-                      <TableCell className="font-bold text-gray-900">
-                        {room.roomNumber}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            room.side.toLowerCase() === "girls"
-                              ? "secondary"
-                              : "default"
-                          }
-                        >
-                          {room.side}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Teacher cell */}
-                      <TableCell>
-                        {room.teachers.length === 0 ? (
-                          <span className="text-xs text-gray-400">
-                            No teacher assigned
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {room.teachers.map((t) => (
-                              <div
-                                key={t.teacherId}
-                                className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-full"
-                              >
-                                <span className="text-xs text-purple-700">
-                                  {t.name}
-                                </span>
-                                <button
-                                  onClick={() => {
-                                    setRemoveTarget({
-                                      teacherId: t.teacherId,
-                                      teacherName: t.name,
-                                      roomNumber: room.roomNumber,
-                                    });
-                                    setRemoveTeacherOpen(true);
-                                  }}
-                                  className="text-purple-400 hover:text-red-500 ml-0.5"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-
-                      {/* Students cell — clickable badge opens detail modal */}
-                      <TableCell>
-                        <button
-                          onClick={() => {
-                            setSelectedRoomDetail(room);
-                            setRoomDetailSearch("");
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors group"
-                        >
-                          <Users className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-700">
-                            {room.totalStudents}{" "}
-                            {room.totalStudents === 1 ? "student" : "students"}
-                          </span>
-                          {room.totalStudents > 0 && (
-                            <span className="text-xs text-blue-400 group-hover:text-blue-600 ml-0.5"></span>
-                          )}
-                        </button>
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteRoom(room)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {filteredRooms.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-gray-400 py-8"
+                      >
+                        No rooms found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    filteredRooms.map((room) => (
+                      <TableRow key={room.id}>
+                        <TableCell className="font-bold text-gray-900">
+                          {room.roomNumber}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              room.side.toLowerCase() === "girls"
+                                ? "secondary"
+                                : "default"
+                            }
+                          >
+                            {room.side}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Teacher cell */}
+                        <TableCell>
+                          {room.teachers.length === 0 ? (
+                            <span className="text-xs text-gray-400">
+                              No teacher assigned
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {room.teachers.map((t) => (
+                                <div
+                                  key={t.teacherId}
+                                  className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-full"
+                                >
+                                  <span className="text-xs text-purple-700">
+                                    {t.name}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setRemoveTarget({
+                                        teacherId: t.teacherId,
+                                        teacherName: t.name,
+                                        roomNumber: room.roomNumber,
+                                      });
+                                      setRemoveTeacherOpen(true);
+                                    }}
+                                    className="text-purple-400 hover:text-red-500 ml-0.5"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+
+                        {/* Students cell — clickable badge opens detail modal */}
+                        <TableCell>
+                          <button
+                            onClick={() => {
+                              setSelectedRoomDetail(room);
+                              setRoomDetailSearch("");
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors group"
+                          >
+                            <Users className="w-3.5 h-3.5 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-700">
+                              {room.totalStudents}{" "}
+                              {room.totalStudents === 1
+                                ? "student"
+                                : "students"}
+                            </span>
+                            {room.totalStudents > 0 && (
+                              <span className="text-xs text-blue-400 group-hover:text-blue-600 ml-0.5"></span>
+                            )}
+                          </button>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteRoom(room)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
@@ -614,7 +622,7 @@ export default function RoomManagement() {
                   </div>
                 </div>
                 <Button
-                  className="mt-4 bg-green-600 hover:bg-green-700"
+                  className="mt-4 bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                   onClick={handleAssignTeacher}
                   disabled={
                     assigningTeacher ||
@@ -638,68 +646,70 @@ export default function RoomManagement() {
                 {allRooms.length} rooms assigned
               </span>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Side</TableHead>
-                  <TableHead>Assigned Teacher</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allRooms.map((room) => (
-                  <TableRow key={room.id}>
-                    <TableCell className="font-medium">
-                      {room.roomNumber}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          room.side.toLowerCase() === "girls"
-                            ? "secondary"
-                            : "default"
-                        }
-                      >
-                        {room.side}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {room.teachers.length === 0 ? (
-                        <span className="text-xs text-gray-400">
-                          No teacher assigned
-                        </span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {room.teachers.map((t) => (
-                            <div
-                              key={t.teacherId}
-                              className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-full"
-                            >
-                              <span className="text-xs text-purple-700">
-                                {t.name}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setRemoveTarget({
-                                    teacherId: t.teacherId,
-                                    teacherName: t.name,
-                                    roomNumber: room.roomNumber,
-                                  });
-                                  setRemoveTeacherOpen(true);
-                                }}
-                                className="text-purple-400 hover:text-red-500 ml-0.5"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Room</TableHead>
+                    <TableHead>Side</TableHead>
+                    <TableHead>Assigned Teacher</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {allRooms.map((room) => (
+                    <TableRow key={room.id}>
+                      <TableCell className="font-medium">
+                        {room.roomNumber}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            room.side.toLowerCase() === "girls"
+                              ? "secondary"
+                              : "default"
+                          }
+                        >
+                          {room.side}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {room.teachers.length === 0 ? (
+                          <span className="text-xs text-gray-400">
+                            No teacher assigned
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {room.teachers.map((t) => (
+                              <div
+                                key={t.teacherId}
+                                className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-full"
+                              >
+                                <span className="text-xs text-purple-700">
+                                  {t.name}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setRemoveTarget({
+                                      teacherId: t.teacherId,
+                                      teacherName: t.name,
+                                      roomNumber: room.roomNumber,
+                                    });
+                                    setRemoveTeacherOpen(true);
+                                  }}
+                                  className="text-purple-400 hover:text-red-500 ml-0.5"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
@@ -719,7 +729,7 @@ export default function RoomManagement() {
                   setSelectedStudentIds([]);
                 }}
               >
-                <SelectTrigger className="max-w-sm">
+                <SelectTrigger className="w-full max-w-sm">
                   <SelectValue placeholder="Choose a room to assign students" />
                 </SelectTrigger>
                 <SelectContent>
@@ -733,7 +743,7 @@ export default function RoomManagement() {
               </Select>
             </div>
 
-            <div className="relative mb-4 max-w-sm">
+            <div className="relative mb-4 w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search unassigned students..."
@@ -813,7 +823,7 @@ export default function RoomManagement() {
                 </div>
 
                 <Button
-                  className="mt-4 bg-green-600 hover:bg-green-700"
+                  className="mt-4 bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                   onClick={handleAssignStudents}
                   disabled={
                     assigningStudents ||
@@ -841,7 +851,7 @@ export default function RoomManagement() {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Home className="w-5 h-5 text-gray-500" />
@@ -964,7 +974,7 @@ export default function RoomManagement() {
 
       {/* ── Remove Teacher Modal ───────────────────────────────────────────── */}
       <Dialog open={removeTeacherOpen} onOpenChange={setRemoveTeacherOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[95vw] max-w-sm">
           <DialogHeader>
             <DialogTitle>Remove Teacher</DialogTitle>
           </DialogHeader>
@@ -1009,7 +1019,7 @@ export default function RoomManagement() {
           }
         }}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[95vw] max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserMinus className="w-5 h-5 text-red-500" /> Remove Student
@@ -1051,7 +1061,7 @@ export default function RoomManagement() {
 
       {/* ── Create Room Modal ──────────────────────────────────────────────── */}
       <Dialog open={createRoomOpen} onOpenChange={setCreateRoomOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[95vw] max-w-sm">
           <DialogHeader>
             <DialogTitle>Create Room</DialogTitle>
           </DialogHeader>

@@ -42,6 +42,7 @@ export default function TeacherRoomDetail() {
         <p className="text-gray-500">Room not found</p>
       </div>
     );
+
   return (
     <div className="space-y-6">
       {/* Back Button */}
@@ -53,11 +54,11 @@ export default function TeacherRoomDetail() {
       </Link>
 
       {/* Room Header */}
-      <Card className="p-6">
-        <div className="flex items-start justify-between">
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                 Room {room.roomNumber}
               </h1>
               <Badge
@@ -74,8 +75,8 @@ export default function TeacherRoomDetail() {
               </p>
             )}
           </div>
-          <Link to="/teacher/attendance">
-            <Button>
+          <Link to="/teacher/attendance" className="sm:flex-shrink-0">
+            <Button className="w-full sm:w-auto">
               <ClipboardCheck className="w-4 h-4 mr-2" />
               Take Attendance
             </Button>
@@ -84,8 +85,8 @@ export default function TeacherRoomDetail() {
       </Card>
 
       {/* Room Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Students</p>
@@ -99,7 +100,7 @@ export default function TeacherRoomDetail() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Assigned Teachers</p>
@@ -113,7 +114,7 @@ export default function TeacherRoomDetail() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Present Today</p>
@@ -130,7 +131,7 @@ export default function TeacherRoomDetail() {
       </div>
 
       {/* Student List */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Students</h2>
 
         {room.students.length === 0 ? (
@@ -144,26 +145,28 @@ export default function TeacherRoomDetail() {
             {room.students.map((student, index) => (
               <div
                 key={student.studentId}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-medium text-xs sm:text-sm">
                       {student.name
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{student.name}</p>
-                    <p className="text-sm text-gray-500">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {student.name}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">
                       {student.idCardNumber}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="text-xs text-gray-400">#{index + 1}</span>
                 </div>
               </div>

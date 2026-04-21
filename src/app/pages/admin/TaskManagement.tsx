@@ -38,6 +38,7 @@ import {
 import { toast } from "react-toastify";
 import { BASE_URL } from "../../config/api";
 import axiosInstance from "../../service/axios";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoomOption {
@@ -115,14 +116,13 @@ const JS_DAY_MAP: Record<number, string> = {
 
 const TODAY_DAY = JS_DAY_MAP[new Date().getDay()];
 
-// Get Monday–Sunday date strings for the current week
 function getCurrentWeekRange(): {
   from: string;
   to: string;
   dateByDay: Record<string, string>;
 } {
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0=Sun
+  const dayOfWeek = now.getDay();
   const monday = new Date(now);
   monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
@@ -174,8 +174,6 @@ export default function AdminTaskManagement() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // ── Fetch ─────────────────────────────────────────────────────────────────
 
   async function fetchData() {
     try {
@@ -286,8 +284,6 @@ export default function AdminTaskManagement() {
     }
   }
 
-  // ── Completion lookup ─────────────────────────────────────────────────────
-  // key: "taskId|date" → completion exists = done
   const completionSet = useMemo(() => {
     const s = new Set<string>();
     for (const c of completions) s.add(`${c.taskId}|${c.completedDate}`);
@@ -298,8 +294,6 @@ export default function AdminTaskManagement() {
     const date = DATE_BY_DAY[day];
     return completionSet.has(`${taskId}|${date}`);
   }
-
-  // ── CRUD ──────────────────────────────────────────────────────────────────
 
   function openEdit(task: TaskResponse) {
     setSelectedTask(task);
@@ -317,8 +311,6 @@ export default function AdminTaskManagement() {
     setForm({ ...EMPTY_FORM, roomNumber, dayOfWeek: day });
     setCreateOpen(true);
   }
-
-  // ── Derived ───────────────────────────────────────────────────────────────
 
   const visibleRooms = useMemo(
     () =>
@@ -360,7 +352,6 @@ export default function AdminTaskManagement() {
 
   const totalTasks = allTasks.length;
 
-  // done = tasks that have a completion record for their scheduled day this week
   const doneThisWeek = useMemo(
     () =>
       allTasks.filter((t) => isDoneOnDay(t.taskId, t.dayOfWeek.toUpperCase()))
@@ -383,12 +374,10 @@ export default function AdminTaskManagement() {
       </div>
     );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Task Management
@@ -398,7 +387,7 @@ export default function AdminTaskManagement() {
           </p>
         </div>
         <Button
-          className="bg-green-600 hover:bg-green-700"
+          className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
           onClick={() => {
             setForm(EMPTY_FORM);
             setCreateOpen(true);
@@ -409,8 +398,8 @@ export default function AdminTaskManagement() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Stats — 2-col on mobile, 4-col on md+ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4">
           <p className="text-xs text-gray-500 mb-1">Total tasks</p>
           <p className="text-2xl font-bold text-gray-900">{totalTasks}</p>
@@ -432,7 +421,7 @@ export default function AdminTaskManagement() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         <Select
           value={filterSide}
           onValueChange={(v) => {
@@ -440,7 +429,7 @@ export default function AdminTaskManagement() {
             setFilterRoom("ALL");
           }}
         >
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-32 sm:w-36">
             <SelectValue placeholder="All sides" />
           </SelectTrigger>
           <SelectContent>
@@ -453,7 +442,7 @@ export default function AdminTaskManagement() {
         {viewMode === "list" && (
           <>
             <Select value={filterRoom} onValueChange={setFilterRoom}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-32 sm:w-36">
                 <SelectValue placeholder="All rooms" />
               </SelectTrigger>
               <SelectContent>
@@ -466,7 +455,7 @@ export default function AdminTaskManagement() {
               </SelectContent>
             </Select>
             <Select value={filterDay} onValueChange={setFilterDay}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-32 sm:w-36">
                 <SelectValue placeholder="All days" />
               </SelectTrigger>
               <SelectContent>
@@ -487,14 +476,14 @@ export default function AdminTaskManagement() {
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${viewMode === "grid" ? "bg-green-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
           >
             <LayoutGrid className="w-4 h-4" />
-            Grid
+            <span className="hidden sm:inline">Grid</span>
           </button>
           <button
             onClick={() => setViewMode("list")}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors border-l border-gray-200 ${viewMode === "list" ? "bg-green-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
           >
             <List className="w-4 h-4" />
-            List
+            <span className="hidden sm:inline">List</span>
           </button>
         </div>
       </div>
@@ -503,126 +492,134 @@ export default function AdminTaskManagement() {
       {viewMode === "grid" && (
         <div>
           <Card className="overflow-hidden">
-            <div
-              className="grid border-b border-gray-100 bg-gray-50"
-              style={{ gridTemplateColumns: "120px repeat(7, 1fr)" }}
-            >
-              <div className="px-3 py-2.5 text-xs font-medium text-gray-500">
-                Room
-              </div>
-              {DAYS.map((day) => (
+            {/* Horizontally scrollable grid on mobile */}
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: "640px" }}>
                 <div
-                  key={day}
-                  className={`px-2 py-2.5 text-xs font-medium text-center border-l border-gray-100 ${day === TODAY_DAY ? "text-green-700" : "text-gray-500"}`}
+                  className="grid border-b border-gray-100 bg-gray-50"
+                  style={{ gridTemplateColumns: "100px repeat(7, 1fr)" }}
                 >
-                  {DAY_SHORT[day]}
-                  {day === TODAY_DAY && (
-                    <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-green-500 align-middle" />
-                  )}
-                  <div className="text-[10px] text-gray-400 font-normal">
-                    {DATE_BY_DAY[day]?.slice(5)}
+                  <div className="px-3 py-2.5 text-xs font-medium text-gray-500">
+                    Room
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {visibleRooms.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-sm">
-                No rooms found
-              </div>
-            ) : (
-              visibleRooms.map((room) => {
-                const rowTasks = DAYS.map(
-                  (day) => taskMap[`${room.roomNumber}|${day}`] ?? [],
-                );
-                const coveredDays = rowTasks.filter((t) => t.length > 0).length;
-                const flatRowTasks = rowTasks.flat();
-                const doneRoomTasks = flatRowTasks.filter((t) =>
-                  isDoneOnDay(t.taskId, t.dayOfWeek.toUpperCase()),
-                ).length;
-
-                return (
-                  <div
-                    key={room.id}
-                    className="grid border-b border-gray-100 last:border-0"
-                    style={{ gridTemplateColumns: "120px repeat(7, 1fr)" }}
-                  >
+                  {DAYS.map((day) => (
                     <div
-                      className="px-3 py-2 border-r border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => {
-                        setDetailRoom(room);
-                        setDetailOpen(true);
-                      }}
+                      key={day}
+                      className={`px-2 py-2.5 text-xs font-medium text-center border-l border-gray-100 ${day === TODAY_DAY ? "text-green-700" : "text-gray-500"}`}
                     >
-                      <p className="text-sm font-semibold text-gray-900">
-                        {room.roomNumber}
-                      </p>
-                      <p className="text-xs text-gray-400">{room.side}</p>
-                      <div className="mt-1.5 flex items-center gap-1">
-                        <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-green-500 transition-all"
-                            style={{
-                              width:
-                                flatRowTasks.length > 0
-                                  ? `${Math.round((doneRoomTasks / flatRowTasks.length) * 100)}%`
-                                  : "0%",
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-400">
-                          {coveredDays}/7
-                        </span>
+                      {DAY_SHORT[day]}
+                      {day === TODAY_DAY && (
+                        <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-green-500 align-middle" />
+                      )}
+                      <div className="text-[10px] text-gray-400 font-normal">
+                        {DATE_BY_DAY[day]?.slice(5)}
                       </div>
                     </div>
+                  ))}
+                </div>
 
-                    {DAYS.map((day) => {
-                      const cells = taskMap[`${room.roomNumber}|${day}`] ?? [];
-                      const isEmpty = cells.length === 0;
-                      return (
-                        <div
-                          key={day}
-                          className={`border-l border-gray-100 p-1.5 min-h-[64px] flex flex-col gap-1 ${isEmpty ? "bg-orange-50/40" : ""} ${day === TODAY_DAY ? "bg-green-50/30" : ""}`}
-                        >
-                          {isEmpty ? (
-                            <button
-                              onClick={() =>
-                                openCreatePrefilled(room.roomNumber, day)
-                              }
-                              className="w-full h-full min-h-[48px] flex items-center justify-center rounded border border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 transition-colors group"
-                            >
-                              <Plus className="w-3.5 h-3.5 text-gray-300 group-hover:text-green-500 transition-colors" />
-                            </button>
-                          ) : (
-                            cells.map((task) => {
-                              const done = isDoneOnDay(task.taskId, day);
-                              return (
-                                <div
-                                  key={task.taskId}
-                                  onClick={() => openEdit(task)}
-                                  className={`rounded px-1.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${done ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}
-                                  title={`${task.title} — ${task.taskTime}`}
-                                >
-                                  <span className="block truncate">
-                                    {task.title}
-                                  </span>
-                                  <span className="text-[10px] opacity-70">
-                                    {task.taskTime}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      );
-                    })}
+                {visibleRooms.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400 text-sm">
+                    No rooms found
                   </div>
-                );
-              })
-            )}
+                ) : (
+                  visibleRooms.map((room) => {
+                    const rowTasks = DAYS.map(
+                      (day) => taskMap[`${room.roomNumber}|${day}`] ?? [],
+                    );
+                    const coveredDays = rowTasks.filter(
+                      (t) => t.length > 0,
+                    ).length;
+                    const flatRowTasks = rowTasks.flat();
+                    const doneRoomTasks = flatRowTasks.filter((t) =>
+                      isDoneOnDay(t.taskId, t.dayOfWeek.toUpperCase()),
+                    ).length;
+
+                    return (
+                      <div
+                        key={room.id}
+                        className="grid border-b border-gray-100 last:border-0"
+                        style={{ gridTemplateColumns: "100px repeat(7, 1fr)" }}
+                      >
+                        <div
+                          className="px-3 py-2 border-r border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => {
+                            setDetailRoom(room);
+                            setDetailOpen(true);
+                          }}
+                        >
+                          <p className="text-sm font-semibold text-gray-900">
+                            {room.roomNumber}
+                          </p>
+                          <p className="text-xs text-gray-400">{room.side}</p>
+                          <div className="mt-1.5 flex items-center gap-1">
+                            <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-green-500 transition-all"
+                                style={{
+                                  width:
+                                    flatRowTasks.length > 0
+                                      ? `${Math.round((doneRoomTasks / flatRowTasks.length) * 100)}%`
+                                      : "0%",
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {coveredDays}/7
+                            </span>
+                          </div>
+                        </div>
+
+                        {DAYS.map((day) => {
+                          const cells =
+                            taskMap[`${room.roomNumber}|${day}`] ?? [];
+                          const isEmpty = cells.length === 0;
+                          return (
+                            <div
+                              key={day}
+                              className={`border-l border-gray-100 p-1.5 min-h-[64px] flex flex-col gap-1 ${isEmpty ? "bg-orange-50/40" : ""} ${day === TODAY_DAY ? "bg-green-50/30" : ""}`}
+                            >
+                              {isEmpty ? (
+                                <button
+                                  onClick={() =>
+                                    openCreatePrefilled(room.roomNumber, day)
+                                  }
+                                  className="w-full h-full min-h-[48px] flex items-center justify-center rounded border border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 transition-colors group"
+                                >
+                                  <Plus className="w-3.5 h-3.5 text-gray-300 group-hover:text-green-500 transition-colors" />
+                                </button>
+                              ) : (
+                                cells.map((task) => {
+                                  const done = isDoneOnDay(task.taskId, day);
+                                  return (
+                                    <div
+                                      key={task.taskId}
+                                      onClick={() => openEdit(task)}
+                                      className={`rounded px-1.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${done ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}
+                                      title={`${task.title} — ${task.taskTime}`}
+                                    >
+                                      <span className="block truncate">
+                                        {task.title}
+                                      </span>
+                                      <span className="text-[10px] opacity-70">
+                                        {task.taskTime}
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </Card>
 
-          <div className="flex items-center gap-4 mt-2 px-1">
+          <div className="flex flex-wrap items-center gap-4 mt-2 px-1">
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <div className="w-3 h-3 rounded bg-green-100 border border-green-300" />
               Done this week
@@ -659,12 +656,16 @@ export default function AdminTaskManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Room</TableHead>
-                  <TableHead>Side</TableHead>
+                  <TableHead className="hidden sm:table-cell">Side</TableHead>
                   <TableHead>Day</TableHead>
                   <TableHead>Task</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-24">Time</TableHead>
-                  <TableHead className="w-32">This week</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Description
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell w-24">
+                    Time
+                  </TableHead>
+                  <TableHead className="w-28">Status</TableHead>
                   <TableHead className="text-right w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -691,8 +692,21 @@ export default function AdminTaskManagement() {
                       <TableRow key={task.taskId}>
                         <TableCell className="font-medium">
                           {task.roomNumber}
+                          {/* Side shown below room number on mobile */}
+                          <div className="sm:hidden mt-0.5">
+                            <Badge
+                              variant={
+                                room?.side.toLowerCase() === "girls"
+                                  ? "secondary"
+                                  : "default"
+                              }
+                              className="text-[10px]"
+                            >
+                              {room?.side ?? task.side}
+                            </Badge>
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge
                             variant={
                               room?.side.toLowerCase() === "girls"
@@ -712,29 +726,39 @@ export default function AdminTaskManagement() {
                                 : ""
                             }
                           >
-                            {task.dayOfWeek.charAt(0) +
-                              task.dayOfWeek.slice(1).toLowerCase()}
+                            {/* Short day name on mobile */}
+                            <span className="sm:hidden">
+                              {DAY_SHORT[task.dayOfWeek.toUpperCase()]}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {task.dayOfWeek.charAt(0) +
+                                task.dayOfWeek.slice(1).toLowerCase()}
+                            </span>
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium text-gray-900">
                           {task.title}
+                          {/* Time shown below title on mobile */}
+                          <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                            {task.taskTime}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">
+                        <TableCell className="hidden md:table-cell text-sm text-gray-500">
                           {task.description ?? "—"}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600">
+                        <TableCell className="hidden sm:table-cell text-sm text-gray-600">
                           {task.taskTime}
                         </TableCell>
                         <TableCell>
                           {done ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                               <CheckCircle2 className="w-3 h-3" />
-                              Done
+                              <span className="hidden sm:inline">Done</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                               <Clock className="w-3 h-3" />
-                              Pending
+                              <span className="hidden sm:inline">Pending</span>
                             </span>
                           )}
                         </TableCell>
@@ -772,7 +796,7 @@ export default function AdminTaskManagement() {
 
       {/* ── Room Detail Modal ─────────────────────────────────────────────── */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg mx-auto rounded-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Room {detailRoom?.roomNumber} — {detailRoom?.side}
@@ -828,25 +852,25 @@ export default function AdminTaskManagement() {
                               key={task.taskId}
                               className="flex items-center justify-between rounded px-3 py-1.5 bg-gray-50 border border-gray-100"
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 {done ? (
                                   <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                                 ) : (
                                   <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                                 )}
-                                <span className="text-sm text-gray-800">
+                                <span className="text-sm text-gray-800 truncate">
                                   {task.title}
                                 </span>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs text-gray-400 flex-shrink-0">
                                   {task.taskTime}
                                 </span>
                                 {done && (
-                                  <span className="text-xs text-green-600 font-medium">
+                                  <span className="text-xs text-green-600 font-medium flex-shrink-0">
                                     ✓ this week
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                   onClick={() => {
                                     setDetailOpen(false);
@@ -882,7 +906,7 @@ export default function AdminTaskManagement() {
 
       {/* ── Create Modal ──────────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Create Task</DialogTitle>
           </DialogHeader>
@@ -958,20 +982,21 @@ export default function AdminTaskManagement() {
                 }
               />
             </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setCreateOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
               <Button
                 className="flex-1 bg-green-600 hover:bg-green-700"
                 onClick={handleCreate}
                 disabled={saving}
               >
                 {saving ? "Creating..." : "Create Task"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCreateOpen(false)}
-                disabled={saving}
-              >
-                Cancel
               </Button>
             </div>
           </div>
@@ -980,7 +1005,7 @@ export default function AdminTaskManagement() {
 
       {/* ── Edit Modal ────────────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
@@ -1038,20 +1063,21 @@ export default function AdminTaskManagement() {
                 }
               />
             </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setEditOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
               <Button
                 className="flex-1 bg-green-600 hover:bg-green-700"
                 onClick={handleEdit}
                 disabled={saving}
               >
                 {saving ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setEditOpen(false)}
-                disabled={saving}
-              >
-                Cancel
               </Button>
             </div>
           </div>
@@ -1060,7 +1086,7 @@ export default function AdminTaskManagement() {
 
       {/* ── Delete Modal ──────────────────────────────────────────────────── */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle>Delete Task</DialogTitle>
           </DialogHeader>
@@ -1073,14 +1099,7 @@ export default function AdminTaskManagement() {
               from Room {selectedTask?.roomNumber}? This will also delete all
               completion history.
             </p>
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 bg-red-600 hover:bg-red-700"
-                onClick={handleDelete}
-                disabled={deletingId !== null}
-              >
-                {deletingId !== null ? "Deleting..." : "Delete"}
-              </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -1088,6 +1107,13 @@ export default function AdminTaskManagement() {
                 disabled={deletingId !== null}
               >
                 Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={deletingId !== null}
+              >
+                {deletingId !== null ? "Deleting..." : "Delete"}
               </Button>
             </div>
           </div>

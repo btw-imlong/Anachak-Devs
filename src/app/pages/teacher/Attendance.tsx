@@ -41,13 +41,6 @@ interface RoomResponse {
   teachers: { teacherId: number; name: string }[];
 }
 
-interface ToggleHelpModeResponse {
-  teacherId: number;
-  teacherName: string;
-  helpMode: boolean;
-  message: string;
-}
-
 export default function TeacherAttendance() {
   const [helpMode, setHelpMode] = useState<boolean>(false);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
@@ -232,13 +225,12 @@ export default function TeacherAttendance() {
   const availableRooms = helpMode ? allRooms : myRooms;
   const myRoomIds = new Set(myRooms.map((r) => r.roomId));
   const students = roomDetail?.students || [];
-  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
       {/* Header with Help Mode Toggle */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">
               Take Attendance
@@ -260,8 +252,7 @@ export default function TeacherAttendance() {
                   <p className="text-sm">
                     <strong>Help Mode:</strong> Enable this when the assigned
                     teacher is absent. It allows you to take attendance for
-                    rooms not assigned to you. The system will record that you
-                    acted as a substitute teacher.
+                    rooms not assigned to you.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -272,7 +263,8 @@ export default function TeacherAttendance() {
                 htmlFor="help-mode"
                 className="text-sm font-medium cursor-pointer"
               >
-                Help Mode (Substitute)
+                <span className="hidden sm:inline">Help Mode (Substitute)</span>
+                <span className="sm:hidden">Help Mode</span>
               </Label>
               <Switch
                 id="help-mode"
@@ -353,12 +345,12 @@ export default function TeacherAttendance() {
         </Card>
       )}
 
-      {/* Attendance Table */}
+      {/* Attendance List */}
       {!loadingRoom && selectedRoom && students.length > 0 && (
         <>
           <Card className="overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900">
                     Room {roomDetail?.roomNumber} - Attendance
@@ -384,21 +376,22 @@ export default function TeacherAttendance() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="space-y-3">
                 {students.map((student, index) => {
                   const status = getStudentStatus(student.studentId);
                   return (
                     <div
                       key={student.studentId}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                         index % 2 === 0 ? "bg-gray-50" : "bg-white"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
+                      {/* Stack on mobile, row on sm+ */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-white font-medium text-xs sm:text-sm">
                               {student.name
                                 .split(" ")
                                 .map((n) => n[0])
@@ -406,7 +399,7 @@ export default function TeacherAttendance() {
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 text-sm sm:text-base">
                               {student.name}
                             </p>
                             <p className="text-xs text-gray-500">
@@ -415,12 +408,13 @@ export default function TeacherAttendance() {
                           </div>
                         </div>
 
+                        {/* Buttons — full width on mobile */}
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
                               handleStatusChange(student.studentId, "PRESENT")
                             }
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
                               status === "PRESENT"
                                 ? "bg-green-500 text-white shadow-md scale-105"
                                 : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600"
@@ -432,7 +426,7 @@ export default function TeacherAttendance() {
                             onClick={() =>
                               handleStatusChange(student.studentId, "LATE")
                             }
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
                               status === "LATE"
                                 ? "bg-yellow-500 text-white shadow-md scale-105"
                                 : "bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600"
@@ -444,7 +438,7 @@ export default function TeacherAttendance() {
                             onClick={() =>
                               handleStatusChange(student.studentId, "ABSENT")
                             }
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
                               status === "ABSENT"
                                 ? "bg-red-500 text-white shadow-md scale-105"
                                 : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
@@ -462,36 +456,36 @@ export default function TeacherAttendance() {
           </Card>
 
           {/* Summary Card */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
-            <div className="flex items-center justify-between">
+          <Card className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">
                   Attendance Summary
                 </h3>
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex flex-wrap items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" />
                     <span className="text-gray-700">
                       Present:{" "}
                       {attendance.filter((a) => a.status === "PRESENT").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full" />
                     <span className="text-gray-700">
                       Late:{" "}
                       {attendance.filter((a) => a.status === "LATE").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-red-500 rounded-full" />
                     <span className="text-gray-700">
                       Absent:{" "}
                       {attendance.filter((a) => a.status === "ABSENT").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                    <div className="w-3 h-3 bg-gray-300 rounded-full" />
                     <span className="text-gray-700">
                       Not marked: {students.length - attendance.length}
                     </span>
@@ -503,7 +497,7 @@ export default function TeacherAttendance() {
                 size="lg"
                 onClick={handleSave}
                 disabled={attendance.length === 0 || saving}
-                className="bg-green-600 hover:bg-green-700"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? "Saving..." : "Save Attendance"}
