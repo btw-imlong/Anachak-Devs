@@ -1,3 +1,4 @@
+// ─── AttendanceToday.tsx ──────────────────────────────────────────────────────
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Card } from "../../components/ui/card";
@@ -74,22 +75,6 @@ export default function AttendanceToday() {
       </div>
     );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500 text-sm">Loading today's attendance...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-500 text-sm">Error: {error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Back */}
@@ -114,13 +99,15 @@ export default function AttendanceToday() {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Summary Cards — 3 cols always, compact on mobile */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <Card
-          className="p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-green-400"
+          className="p-3 sm:p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-green-400"
           onClick={() => setFilter(filter === "PRESENT" ? "ALL" : "PRESENT")}
         >
-          <p className="text-2xl font-bold text-green-600">{presentCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">
+            {presentCount}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Present</p>
           {filter === "PRESENT" && (
             <span className="text-xs text-green-600 font-medium">
@@ -130,10 +117,12 @@ export default function AttendanceToday() {
         </Card>
 
         <Card
-          className="p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-yellow-400"
+          className="p-3 sm:p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-yellow-400"
           onClick={() => setFilter(filter === "LATE" ? "ALL" : "LATE")}
         >
-          <p className="text-2xl font-bold text-yellow-600">{lateCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600">
+            {lateCount}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Late</p>
           {filter === "LATE" && (
             <span className="text-xs text-yellow-600 font-medium">
@@ -143,10 +132,12 @@ export default function AttendanceToday() {
         </Card>
 
         <Card
-          className="p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-red-400"
+          className="p-3 sm:p-4 text-center cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-red-400"
           onClick={() => setFilter(filter === "ABSENT" ? "ALL" : "ABSENT")}
         >
-          <p className="text-2xl font-bold text-red-600">{absentCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-600">
+            {absentCount}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Absent</p>
           {filter === "ABSENT" && (
             <span className="text-xs text-red-600 font-medium">
@@ -156,13 +147,13 @@ export default function AttendanceToday() {
         </Card>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
+      {/* Filter Tabs — scrollable on mobile */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {(["ALL", "PRESENT", "LATE", "ABSENT"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
               filter === f
                 ? "bg-green-600 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -177,7 +168,7 @@ export default function AttendanceToday() {
 
       {/* Records List */}
       <Card className="overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b flex items-center gap-2">
+        <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b flex items-center gap-2">
           <Users className="w-4 h-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">
             {filtered.length} {filtered.length === 1 ? "student" : "students"}
@@ -197,25 +188,25 @@ export default function AttendanceToday() {
             {filtered.map((record) => (
               <div
                 key={record.recordId}
-                className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <div
-                    className={`w-10 h-10 ${avatarColor(record.status)} rounded-full flex items-center justify-center`}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 ${avatarColor(record.status)} rounded-full flex items-center justify-center flex-shrink-0`}
                   >
-                    <span className="text-white font-medium text-sm">
+                    <span className="text-white font-medium text-xs sm:text-sm">
                       {record.studentName
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
                       {record.studentName}
                     </p>
                     {record.teacherName && (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 truncate">
                         Marked by: {record.teacherName}
                       </p>
                     )}
@@ -223,7 +214,7 @@ export default function AttendanceToday() {
                 </div>
 
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(record.status)}`}
+                  className={`ml-2 flex-shrink-0 px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${statusColor(record.status)}`}
                 >
                   {record.status.charAt(0) +
                     record.status.slice(1).toLowerCase()}

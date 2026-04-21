@@ -75,11 +75,12 @@ export default function TeacherDashboard() {
         <p className="text-red-500 text-sm">Error: {error}</p>
       </div>
     );
+
   return (
     <div className="space-y-8">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">My Rooms</p>
@@ -93,7 +94,8 @@ export default function TeacherDashboard() {
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Students</p>
@@ -111,7 +113,7 @@ export default function TeacherDashboard() {
         </Card>
 
         <Link to="/teacher/attendance-today">
-          <Card className="p-6 cursor-pointer hover:shadow-md transition-shadow">
+          <Card className="p-5 sm:p-6 cursor-pointer hover:shadow-md transition-shadow h-full">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Attendance Today</p>
@@ -139,7 +141,7 @@ export default function TeacherDashboard() {
 
       {/* My Rooms Grid */}
       <div id="rooms">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
               My Assigned Rooms
@@ -149,22 +151,22 @@ export default function TeacherDashboard() {
             </p>
           </div>
           <Link to="/teacher/attendance">
-            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            <button className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
               Take Attendance
             </button>
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {myRooms.map((room) => {
             const roomStudents = allMyStudents.filter(
               (s) => s.room?.roomNumber === room.roomNumber,
             );
-            const previewStudent = roomStudents[0]; // show only first student
+            const previewStudent = roomStudents[0];
 
             return (
               <Link key={room.roomId} to={`/teacher/room/${room.roomId}`}>
-                <Card className="p-5 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-500">
+                <Card className="p-5 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-500 h-full">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-2xl font-bold text-gray-900">
                       {room.roomNumber}
@@ -189,15 +191,12 @@ export default function TeacherDashboard() {
                       </span>
                     </div>
 
-                    {/* ✅ Show only 1 student preview */}
                     {previewStudent && (
                       <div className="pt-2 border-t">
                         <p className="text-xs text-gray-500 mb-1">Students:</p>
                         <p className="text-xs text-gray-700 truncate">
                           • {previewStudent.name}
                         </p>
-
-                        {/* ✅ Show +N more if there are additional students */}
                         {roomStudents.length > 1 && (
                           <p className="text-xs text-green-600 mt-1 font-medium">
                             +{roomStudents.length - 1} more...
@@ -226,9 +225,9 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         <Link to="/teacher/attendance">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-green-500">
+          <Card className="p-5 sm:p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-green-500">
             <h3 className="font-semibold text-gray-900 mb-2">
               Take Attendance
             </h3>
@@ -239,7 +238,7 @@ export default function TeacherDashboard() {
         </Link>
 
         <Link to="/teacher/tasks">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-green-500">
+          <Card className="p-5 sm:p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-green-500">
             <h3 className="font-semibold text-gray-900 mb-2">
               View Weekly Tasks
             </h3>
