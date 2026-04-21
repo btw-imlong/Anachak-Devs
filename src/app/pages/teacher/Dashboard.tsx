@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/card";
 import { Home, Users, CheckCircle } from "lucide-react";
 import { Link } from "react-router";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import type { AttendanceSummaryResponse } from "../../service/attendance";
 import type {
   TeacherResponse,
@@ -21,13 +21,7 @@ export default function TeacherDashboard() {
   const [attendanceSummary, setAttendanceSummary] =
     useState<AttendanceSummaryResponse | null>(null);
 
-  const token = localStorage.getItem("token");
   const teacherId = localStorage.getItem("userId");
-
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -36,31 +30,19 @@ export default function TeacherDashboard() {
   async function fetchDashboardData() {
     try {
       setLoading(true);
-
-      // 1. Get teacher info (includes assigned rooms)
-      const teacherRes = await fetch(
-        `${BASE_URL}/api/users/teacher/by-user/${teacherId}`, // ✅ changed
-        { headers: authHeader },
+      const { data: teacher } = await axiosInstance.get(
+        `/api/users/teacher/by-user/${teacherId}`,
       );
-      if (!teacherRes.ok) throw new Error("Failed to fetch teacher info");
-      const teacher: TeacherResponse = await teacherRes.json();
       const rooms: RoomInfo[] = teacher.rooms || [];
       setMyRooms(rooms);
 
-      // 2. Get all students
-      const studentsRes = await fetch(
-        `${BASE_URL}/api/users/students?page=0&size=100&sortBy=name`,
-        { headers: authHeader },
+      const { data: studentsData } = await axiosInstance.get(
+        "/api/users/students?page=0&size=100&sortBy=name",
       );
-      if (!studentsRes.ok) throw new Error("Failed to fetch students");
-      const studentsData: PageResponse<StudentResponse> =
-        await studentsRes.json();
       const allStudents = studentsData.content || [];
-
-      // 3. Filter students that belong to teacher's rooms
       const roomNumbers = rooms.map((r) => r.roomNumber);
       const myStudents = allStudents.filter(
-        (s) => s.room && roomNumbers.includes(s.room.roomNumber),
+        (s: any) => s.room && roomNumbers.includes(s.room.roomNumber),
       );
       setAllMyStudents(myStudents);
     } catch (err) {
@@ -68,38 +50,31 @@ export default function TeacherDashboard() {
     } finally {
       setLoading(false);
     }
+
     try {
-      const attendanceRes = await fetch(
-        `${BASE_URL}/api/attendance/today/summary`,
-        { headers: authHeader },
+      const { data: summary } = await axiosInstance.get(
+        "/api/attendance/today/summary",
       );
-      if (attendanceRes.ok) {
-        const summary: AttendanceSummaryResponse = await attendanceRes.json();
-        setAttendanceSummary(summary);
-        setPresentCount(summary.present);
-        setTodayTotal(summary.total);
-      }
+      setAttendanceSummary(summary);
+      setPresentCount(summary.present);
+      setTodayTotal(summary.total);
     } catch {
-      // attendance not critical — fail silently
+      // fail silently
     }
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500 text-sm">Loading dashboard...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-red-500 text-sm">Error: {error}</p>
       </div>
     );
-  }
-
   return (
     <div className="space-y-8">
       {/* Summary Cards */}

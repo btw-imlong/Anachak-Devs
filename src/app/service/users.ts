@@ -1,9 +1,4 @@
-import { BASE_URL } from "../config/api";
-
-const getAuthHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
+import axiosInstance from "./axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,84 +40,36 @@ export interface UpdateStudentPayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const res = await fetch(`${BASE_URL}/api/users`, {
-    // ✅ fixed
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to fetch users");
-  return res.json();
+  const { data } = await axiosInstance.get("/api/users");
+  return data;
 };
 
 export const createTeacher = async (
-  data: CreateTeacherPayload,
+  payload: CreateTeacherPayload,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/users/teacher`, {
-    // ✅ fixed
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to create teacher");
-  }
+  await axiosInstance.post("/api/users/teacher", payload);
 };
 
 export const createStudent = async (
-  data: CreateStudentPayload,
+  payload: CreateStudentPayload,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/users/student`, {
-    // ✅ fixed
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to create student");
-  }
+  await axiosInstance.post("/api/users/student", payload);
 };
 
 export const updateTeacher = async (
   id: string,
-  data: UpdateTeacherPayload,
+  payload: UpdateTeacherPayload,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/users/teacher/${id}`, {
-    // ✅ new
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to update teacher");
-  }
+  await axiosInstance.put(`/api/users/teacher/${id}`, payload);
 };
 
 export const updateStudent = async (
   id: string,
-  data: UpdateStudentPayload,
+  payload: UpdateStudentPayload,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/users/student/${id}`, {
-    // ✅ new
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to update student");
-  }
+  await axiosInstance.put(`/api/users/student/${id}`, payload);
 };
 
 export const deleteUser = async (id: string): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/users/${id}`, {
-    // ✅ fixed
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to delete user");
-  }
+  await axiosInstance.delete(`/api/users/${id}`);
 };

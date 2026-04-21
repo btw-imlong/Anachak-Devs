@@ -6,14 +6,9 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // 🔑 sends cookie automatically on every request
 });
 
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// ❌ Removed: token interceptor (no longer needed — cookie is sent automatically)
 
 export default axiosInstance;

@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/card";
 import { Users, Home, GraduationCap, CheckCircle } from "lucide-react";
 import { Link } from "react-router";
-import { BASE_URL } from "../../config/api";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import axiosInstance from "../../service/axios";
 
 interface RoomSummary {
   id: number;
@@ -27,8 +25,6 @@ interface DashboardStats {
   attendanceRate: number;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalRooms: 0,
@@ -44,14 +40,8 @@ export default function AdminDashboard() {
   });
   const [girlsRooms, setGirlsRooms] = useState<RoomSummary[]>([]);
   const [boysRooms, setBoysRooms] = useState<RoomSummary[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -60,23 +50,15 @@ export default function AdminDashboard() {
   async function fetchDashboardData() {
     try {
       setLoading(true);
-
-      // fetch all in parallel
       const [roomsRes, studentsRes, teachersRes, attendanceRes] =
         await Promise.all([
-          fetch(`${BASE_URL}/api/rooms`, { headers: authHeader }),
-          fetch(`${BASE_URL}/api/users/students?page=0&size=1000`, {
-            headers: authHeader,
-          }),
-          fetch(`${BASE_URL}/api/users/teachers?page=0&size=1000`, {
-            headers: authHeader,
-          }),
-          fetch(`${BASE_URL}/api/attendance/today`, { headers: authHeader }),
+          axiosInstance.get("/api/rooms"),
+          axiosInstance.get("/api/users/students?page=0&size=1000"),
+          axiosInstance.get("/api/users/teachers?page=0&size=1000"),
+          axiosInstance.get("/api/attendance/today"),
         ]);
 
-      // ── Rooms ──────────────────────────────────────────────────────────────
-      const roomsData = roomsRes.ok ? await roomsRes.json() : [];
-      const allRooms: RoomSummary[] = roomsData.map((r: any) => ({
+      const allRooms: RoomSummary[] = roomsRes.data.map((r: any) => ({
         id: r.id,
         roomNumber: r.roomNumber,
         side: r.side,
@@ -89,11 +71,7 @@ export default function AdminDashboard() {
       setGirlsRooms(girls);
       setBoysRooms(boys);
 
-      // ── Students ───────────────────────────────────────────────────────────
-      const studentsData = studentsRes.ok
-        ? await studentsRes.json()
-        : { content: [] };
-      const allStudents = studentsData.content ?? [];
+      const allStudents = studentsRes.data.content ?? [];
       const girlsStudents = allStudents.filter(
         (s: any) => s.room?.side?.toLowerCase() === "girls",
       ).length;
@@ -101,14 +79,9 @@ export default function AdminDashboard() {
         (s: any) => s.room?.side?.toLowerCase() === "boys",
       ).length;
 
-      // ── Teachers ───────────────────────────────────────────────────────────
-      const teachersData = teachersRes.ok
-        ? await teachersRes.json()
-        : { content: [] };
-      const totalTeachers = teachersData.content?.length ?? 0;
+      const totalTeachers = teachersRes.data.content?.length ?? 0;
 
-      // ── Attendance ─────────────────────────────────────────────────────────
-      const attendanceData = attendanceRes.ok ? await attendanceRes.json() : [];
+      const attendanceData = attendanceRes.data ?? [];
       const presentCount = attendanceData.filter(
         (r: any) => r.status === "PRESENT",
       ).length;
@@ -137,25 +110,21 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500 text-sm">Loading dashboard...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-red-500 text-sm">Error: {error}</p>
       </div>
     );
-  }
 
   return (
     <div className="space-y-8">
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
@@ -173,7 +142,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -190,7 +158,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -207,7 +174,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -228,16 +194,13 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Rooms Grid */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">
             All Rooms Overview
           </h2>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Girls Side */}
           <div>
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-pink-600">
@@ -267,7 +230,6 @@ export default function AdminDashboard() {
                   </p>
                 </Card>
               ))}
-
               {girlsRooms.length === 0 && (
                 <p className="text-sm text-gray-400 col-span-2">
                   No girls rooms found
@@ -275,8 +237,6 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-
-          {/* Boys Side */}
           <div>
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-blue-600">
@@ -306,7 +266,6 @@ export default function AdminDashboard() {
                   </p>
                 </Card>
               ))}
-
               {boysRooms.length === 0 && (
                 <p className="text-sm text-gray-400 col-span-2">
                   No boys rooms found
@@ -317,7 +276,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Link to="/admin/users">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500">
@@ -329,7 +287,6 @@ export default function AdminDashboard() {
             </p>
           </Card>
         </Link>
-
         <Link to="/admin/services">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500">
             <h3 className="font-semibold text-gray-900 mb-2">
@@ -340,7 +297,6 @@ export default function AdminDashboard() {
             </p>
           </Card>
         </Link>
-
         <Link to="/admin/tasks">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500">
             <h3 className="font-semibold text-gray-900 mb-2">

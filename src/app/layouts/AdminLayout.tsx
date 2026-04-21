@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router";
+import { logout } from "../service/api";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -36,7 +37,8 @@ export default function AdminLayout() {
     .slice(0, 2);
 
   // ✅ logout
-  function handleLogout() {
+  async function handleLogout() {
+    await logout(); // ← clears the cookie on the backend
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     localStorage.removeItem("role");
@@ -44,7 +46,6 @@ export default function AdminLayout() {
     localStorage.removeItem("email");
     navigate("/");
   }
-
   // ✅ active check — also highlight parent for nested routes
   function isActive(href: string): boolean {
     if (href === "/admin") return location.pathname === "/admin";
@@ -101,7 +102,7 @@ export default function AdminLayout() {
             <Button
               variant="ghost"
               className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
-              onClick={handleLogout}
+              onClick={() => handleLogout()}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Logout

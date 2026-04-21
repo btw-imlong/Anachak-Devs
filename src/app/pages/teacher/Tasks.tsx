@@ -16,9 +16,9 @@ import {
   XCircle,
   RotateCcw,
 } from "lucide-react";
-import { BASE_URL } from "../../config/api";
 import { toast } from "react-toastify";
 import { Link } from "react-router";
+import axiosInstance from "../../service/axios";
 import type { RoomInfo, TeacherResponse } from "../../service/teacher";
 import type {
   TaskResponse,
@@ -34,7 +34,6 @@ const DAYS = [
   "Saturday",
   "Sunday",
 ];
-
 const JS_DAY_MAP: Record<number, string> = {
   0: "Sunday",
   1: "Monday",
@@ -48,12 +47,9 @@ const JS_DAY_MAP: Record<number, string> = {
 function getTodayName(): string {
   return JS_DAY_MAP[new Date().getDay()];
 }
-
 function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
-
-// Get Monday of the current week
 function getWeekFrom(): string {
   const now = new Date();
   const day = now.getDay();
@@ -61,7 +57,6 @@ function getWeekFrom(): string {
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
   return monday.toISOString().split("T")[0];
 }
-
 function getWeekTo(): string {
   const from = new Date(getWeekFrom());
   from.setDate(from.getDate() + 6);
@@ -73,9 +68,7 @@ export default function TeacherTasks() {
   const [tasksByRoom, setTasksByRoom] = useState<
     Record<string, TaskResponse[]>
   >({});
-  // completionKey set: "taskId|date"
   const [completionKeys, setCompletionKeys] = useState<Set<string>>(new Set());
-  // map taskId|date -> completionId (for unmark)
   const [completionIdMap, setCompletionIdMap] = useState<
     Record<string, number>
   >({});
@@ -83,13 +76,7 @@ export default function TeacherTasks() {
   const [error, setError] = useState<string | null>(null);
   const [markingTaskId, setMarkingTaskId] = useState<number | null>(null);
 
-  const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
   const today = getTodayDate();
   const todayName = getTodayName();
   const weekFrom = getWeekFrom();
@@ -102,45 +89,41 @@ export default function TeacherTasks() {
   async function fetchData() {
     try {
       setLoading(true);
-      const teacherRes = await fetch(
-        `${BASE_URL}/api/users/teacher/by-user/${userId}`,
-        { headers: authHeader },
+      const { data: teacher } = await axiosInstance.get(
+        `/api/users/teacher/by-user/${userId}`,
       );
-      if (!teacherRes.ok) throw new Error("Failed to fetch teacher info");
-      const teacher: TeacherResponse = await teacherRes.json();
       const rooms: RoomInfo[] = teacher.rooms || [];
       setMyRooms(rooms);
 
-      // fetch tasks per room
       const taskMap: Record<string, TaskResponse[]> = {};
       await Promise.all(
         rooms.map(async (room) => {
-          const res = await fetch(
-            `${BASE_URL}/api/tasks/room/${room.roomNumber}`,
-            { headers: authHeader },
-          );
-          taskMap[room.roomNumber] = res.ok ? await res.json() : [];
+          try {
+            const { data } = await axiosInstance.get(
+              `/api/tasks/room/${room.roomNumber}`,
+            );
+            taskMap[room.roomNumber] = data;
+          } catch {
+            taskMap[room.roomNumber] = [];
+          }
         }),
       );
       setTasksByRoom(taskMap);
 
-      // fetch this week's completions for all my rooms
       const keys = new Set<string>();
       const idMap: Record<string, number> = {};
       await Promise.all(
         rooms.map(async (room) => {
-          const res = await fetch(
-            `${BASE_URL}/api/tasks/completions/room/${room.roomNumber}?from=${weekFrom}&to=${weekTo}`,
-            { headers: authHeader },
-          );
-          if (res.ok) {
-            const comps: TaskCompletionResponse[] = await res.json();
+          try {
+            const { data: comps } = await axiosInstance.get(
+              `/api/tasks/completions/room/${room.roomNumber}?from=${weekFrom}&to=${weekTo}`,
+            );
             for (const c of comps) {
               const key = `${c.taskId}|${c.completedDate}`;
               keys.add(key);
               idMap[key] = c.completionId;
             }
-          }
+          } catch {}
         }),
       );
       setCompletionKeys(keys);
@@ -156,22 +139,16 @@ export default function TeacherTasks() {
     return completionKeys.has(`${taskId}|${date}`);
   }
 
-  // ── Mark done ─────────────────────────────────────────────────────────────
-
   async function handleMarkDone(task: TaskResponse) {
     try {
       setMarkingTaskId(task.taskId);
-      const res = await fetch(`${BASE_URL}/api/tasks/complete`, {
-        method: "POST",
-        headers: authHeader,
-        body: JSON.stringify({ taskId: task.taskId, completedDate: today }),
-      });
-      if (res.status === 400) {
-        toast.warning((await res.text()) || "Already marked done today");
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const completion: TaskCompletionResponse = await res.json();
+      const { data: completion } = await axiosInstance.post(
+        "/api/tasks/complete",
+        {
+          taskId: task.taskId,
+          completedDate: today,
+        },
+      );
       const key = `${task.taskId}|${today}`;
       setCompletionKeys((prev) => new Set(prev).add(key));
       setCompletionIdMap((prev) => ({
@@ -179,26 +156,19 @@ export default function TeacherTasks() {
         [key]: completion.completionId,
       }));
       toast.success(`"${task.title}" marked as done!`);
-    } catch {
-      toast.error("Failed to mark task as done");
+    } catch (err: any) {
+      if (err.response?.status === 400)
+        toast.warning(err.response.data || "Already marked done today");
+      else toast.error("Failed to mark task as done");
     } finally {
       setMarkingTaskId(null);
     }
   }
 
-  // ── Unmark done ───────────────────────────────────────────────────────────
-
   async function handleUnmark(task: TaskResponse) {
     try {
       setMarkingTaskId(task.taskId);
-      const res = await fetch(
-        `${BASE_URL}/api/tasks/${task.taskId}/complete/${today}`,
-        {
-          method: "DELETE",
-          headers: authHeader,
-        },
-      );
-      if (!res.ok) throw new Error();
+      await axiosInstance.delete(`/api/tasks/${task.taskId}/complete/${today}`);
       const key = `${task.taskId}|${today}`;
       setCompletionKeys((prev) => {
         const s = new Set(prev);
@@ -254,7 +224,6 @@ export default function TeacherTasks() {
         <p className="text-gray-500 text-sm">Loading tasks...</p>
       </div>
     );
-
   if (error)
     return (
       <div className="flex items-center justify-center h-64">
@@ -280,7 +249,6 @@ export default function TeacherTasks() {
         </Link>
       </div>
 
-      {/* Today banner */}
       <Card className="p-4 bg-blue-50 border-blue-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -290,8 +258,7 @@ export default function TeacherTasks() {
               <p className="text-sm text-gray-600">
                 Click{" "}
                 <span className="font-medium text-green-600">Mark Done</span> on
-                today's task when complete. You can also unmark if you made a
-                mistake.
+                today's task when complete.
               </p>
             </div>
           </div>
@@ -316,7 +283,6 @@ export default function TeacherTasks() {
         const todayTask = tasks.find(
           (t) => t.dayOfWeek.toLowerCase() === todayName.toLowerCase(),
         );
-
         return (
           <Card key={room.roomId} className="overflow-hidden">
             <div className="bg-gray-50 px-6 py-4 border-b">
@@ -345,7 +311,6 @@ export default function TeacherTasks() {
                 </Badge>
               </div>
             </div>
-
             <Table>
               <TableHeader>
                 <TableRow>
@@ -363,7 +328,6 @@ export default function TeacherTasks() {
                   const isToday = day.toLowerCase() === todayName.toLowerCase();
                   const isMarking = markingTaskId === task?.taskId;
                   const done = task ? isDone(task.taskId, today) : false;
-
                   return (
                     <TableRow key={day} className={isToday ? "bg-blue-50" : ""}>
                       <TableCell>

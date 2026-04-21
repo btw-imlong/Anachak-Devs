@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Card } from "../../components/ui/card";
 import { ArrowLeft, Users } from "lucide-react";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import type { AttendanceRecordResponse } from "../../service/attendance";
 
 export default function AttendanceToday() {
@@ -13,12 +13,6 @@ export default function AttendanceToday() {
     "ALL",
   );
 
-  const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
   useEffect(() => {
     fetchTodayRecords();
   }, []);
@@ -26,11 +20,7 @@ export default function AttendanceToday() {
   async function fetchTodayRecords() {
     try {
       setLoading(true);
-      const res = await fetch(`${BASE_URL}/api/attendance/today`, {
-        headers: authHeader,
-      });
-      if (!res.ok) throw new Error("Failed to fetch today's attendance");
-      const data: AttendanceRecordResponse[] = await res.json();
+      const { data } = await axiosInstance.get("/api/attendance/today");
       setRecords(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -41,7 +31,6 @@ export default function AttendanceToday() {
 
   const filtered =
     filter === "ALL" ? records : records.filter((r) => r.status === filter);
-
   const presentCount = records.filter((r) => r.status === "PRESENT").length;
   const lateCount = records.filter((r) => r.status === "LATE").length;
   const absentCount = records.filter((r) => r.status === "ABSENT").length;
@@ -71,6 +60,19 @@ export default function AttendanceToday() {
         return "bg-gray-400";
     }
   };
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-sm">Loading today's attendance...</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-red-500 text-sm">Error: {error}</p>
+      </div>
+    );
 
   if (loading) {
     return (

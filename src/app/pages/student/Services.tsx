@@ -17,12 +17,10 @@ export default function StudentServices() {
       try {
         const userId = localStorage.getItem("userId");
         if (!userId) throw new Error("No user logged in");
-
         const student = await getStudentByUserId(userId);
         setStudentName(student.name ?? "");
-
         const data = await getServicesByStudentId(student.id);
-        setServices(Array.isArray(data) ? data : [data]); // handle single object or array
+        setServices(Array.isArray(data) ? data : [data]);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load services",
@@ -31,19 +29,16 @@ export default function StudentServices() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Loading services...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-2 text-red-500">
@@ -52,11 +47,9 @@ export default function StudentServices() {
         </div>
       </div>
     );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">
           My Services
@@ -64,7 +57,6 @@ export default function StudentServices() {
         <p className="text-sm text-gray-500">Service duties assigned to you</p>
       </div>
 
-      {/* Service Cards */}
       <div className="grid gap-4">
         {services.length === 0 ? (
           <Card className="p-10 flex flex-col items-center justify-center text-center gap-3">
@@ -80,12 +72,9 @@ export default function StudentServices() {
               className="p-6 hover:shadow-md transition-all border border-gray-200"
             >
               <div className="flex items-start gap-4">
-                {/* Icon */}
                 <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
                   <BookOpen className="w-6 h-6 text-purple-600" />
                 </div>
-
-                {/* Info */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900 text-lg">
@@ -125,7 +114,6 @@ export default function StudentServices() {
         )}
       </div>
 
-      {/* Info Footer */}
       <Card className="p-5 bg-blue-50 border-blue-200">
         <h3 className="font-semibold text-gray-900 mb-1">About My Services</h3>
         <p className="text-sm text-gray-600">

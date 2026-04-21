@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
 import { Card } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Clock, Calendar, CheckCircle, Circle } from "lucide-react";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import { getStudentByUserId } from "../../service/Studentdashboard";
 import type {
   TaskResponse,
@@ -20,7 +19,6 @@ const DAY_ORDER = [
   "SUNDAY",
 ];
 const formatDay = (day: string) => day.charAt(0) + day.slice(1).toLowerCase();
-
 const JS_DAY_MAP: Record<number, string> = {
   0: "SUNDAY",
   1: "MONDAY",
@@ -37,7 +35,6 @@ function getTodayKey(): string {
 function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
-
 function getWeekFrom(): string {
   const now = new Date();
   const day = now.getDay();
@@ -45,7 +42,6 @@ function getWeekFrom(): string {
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
   return monday.toISOString().split("T")[0];
 }
-
 function getWeekTo(): string {
   const from = new Date(getWeekFrom());
   from.setDate(from.getDate() + 6);
@@ -58,12 +54,6 @@ export default function StudentTasks() {
   const [roomNumber, setRoomNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   const today = getTodayDate();
   const todayKey = getTodayKey();
@@ -79,29 +69,21 @@ export default function StudentTasks() {
         if (!room) throw new Error("No room assigned");
         setRoomNumber(room);
 
-        // fetch tasks
-        const tasksRes = await fetch(`${BASE_URL}/api/tasks/room/${room}`, {
-          headers: authHeader,
-        });
-        if (!tasksRes.ok) throw new Error("Failed to fetch tasks");
-        const data: TaskResponse[] = await tasksRes.json();
+        const { data } = await axiosInstance.get(`/api/tasks/room/${room}`);
         const sorted = [...data].sort(
-          (a, b) =>
+          (a: TaskResponse, b: TaskResponse) =>
             DAY_ORDER.indexOf(a.dayOfWeek) - DAY_ORDER.indexOf(b.dayOfWeek),
         );
         setTasks(sorted);
 
-        // fetch this week's completions — read-only for students
-        const compRes = await fetch(
-          `${BASE_URL}/api/tasks/completions/room/${room}?from=${getWeekFrom()}&to=${getWeekTo()}`,
-          { headers: authHeader },
-        );
-        if (compRes.ok) {
-          const comps: TaskCompletionResponse[] = await compRes.json();
+        try {
+          const { data: comps } = await axiosInstance.get(
+            `/api/tasks/completions/room/${room}?from=${getWeekFrom()}&to=${getWeekTo()}`,
+          );
           const keys = new Set<string>();
           for (const c of comps) keys.add(`${c.taskId}|${c.completedDate}`);
           setCompletionKeys(keys);
-        }
+        } catch {}
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load tasks");
       } finally {
@@ -121,7 +103,6 @@ export default function StudentTasks() {
         <p className="text-gray-500">Loading tasks...</p>
       </div>
     );
-
   if (error)
     return (
       <div className="flex items-center justify-center h-64">
@@ -166,7 +147,6 @@ export default function StudentTasks() {
           tasks.map((task) => {
             const isToday = task.dayOfWeek === todayKey;
             const done = isDone(task.taskId);
-
             return (
               <Card
                 key={task.taskId}
@@ -206,8 +186,6 @@ export default function StudentTasks() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Status — read only, no mark done button */}
                   <div className="flex flex-col items-end gap-2">
                     {done ? (
                       <div className="flex items-center gap-1 text-green-600">
@@ -239,7 +217,7 @@ export default function StudentTasks() {
         </h3>
         <p className="text-sm text-gray-600">
           These are your room's weekly recurring tasks. Your teacher marks tasks
-          as done each day. Check back to see today's progress.
+          as done each day.
         </p>
       </Card>
     </div>

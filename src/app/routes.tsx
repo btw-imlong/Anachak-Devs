@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import PortalSelection from "./pages/PortalSelection";
 import AdminLayout from "./layouts/AdminLayout";
 import TeacherLayout from "./layouts/TeacherLayout";
@@ -8,7 +8,7 @@ import AdminUserManagement from "./pages/admin/UserManagement";
 import AdminServiceManagement from "./pages/admin/ServiceManagement";
 import AdminTaskManagement from "./pages/admin/TaskManagement";
 import TeacherDashboard from "./pages/teacher/Dashboard";
-import TeacherRoomDetail from "./pages/teacher/RoomDetail"; // ✅ only once
+import TeacherRoomDetail from "./pages/teacher/RoomDetail";
 import TeacherAttendance from "./pages/teacher/Attendance";
 import TeacherTasks from "./pages/teacher/Tasks";
 import StudentDashboard from "./pages/student/Dashboard";
@@ -18,6 +18,31 @@ import StudentAttendance from "./pages/student/Attendance";
 import AttendanceToday from "./pages/teacher/AttendanceTodays";
 import AllRoomsTasks from "./pages/teacher/TeacherTask";
 import RoomManagement from "./pages/admin/RoomManagement";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+function ProtectedAdmin() {
+  return (
+    <ProtectedRoute allowedRoles={["ADMIN", "ROLE_ADMIN"]}>
+      <AdminLayout />
+    </ProtectedRoute>
+  );
+}
+
+function ProtectedTeacher() {
+  return (
+    <ProtectedRoute allowedRoles={["TEACHER"]}>
+      <TeacherLayout />
+    </ProtectedRoute>
+  );
+}
+
+function ProtectedStudent() {
+  return (
+    <ProtectedRoute allowedRoles={["STUDENT"]}>
+      <StudentLayout />
+    </ProtectedRoute>
+  );
+}
 
 export const router = createBrowserRouter([
   {
@@ -26,7 +51,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/admin",
-    Component: AdminLayout,
+    Component: ProtectedAdmin,
     children: [
       { index: true, Component: AdminDashboard },
       { path: "users", Component: AdminUserManagement },
@@ -37,10 +62,10 @@ export const router = createBrowserRouter([
   },
   {
     path: "/teacher",
-    Component: TeacherLayout,
+    Component: ProtectedTeacher,
     children: [
       { index: true, Component: TeacherDashboard },
-      { path: "room/:roomId", Component: TeacherRoomDetail }, // ✅ roomId
+      { path: "room/:roomId", Component: TeacherRoomDetail },
       { path: "attendance", Component: TeacherAttendance },
       { path: "tasks", Component: TeacherTasks },
       { path: "attendance-today", Component: AttendanceToday },
@@ -49,7 +74,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/student",
-    Component: StudentLayout,
+    Component: ProtectedStudent,
     children: [
       { index: true, Component: StudentDashboard },
       { path: "tasks", Component: StudentTasks },

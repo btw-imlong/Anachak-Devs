@@ -1,6 +1,4 @@
-import { BASE_URL } from "../config/api";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import axiosInstance from "./axios";
 
 export interface StudentService {
   assignmentId: number;
@@ -11,19 +9,11 @@ export interface StudentService {
   studentName: string;
 }
 
-// ─── API Functions ────────────────────────────────────────────────────────────
-
-const getAuthHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
-
 export const getServicesByStudentId = async (
   studentId: number | string,
 ): Promise<StudentService[]> => {
-  const res = await fetch(`${BASE_URL}/api/services/student/${studentId}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to fetch student services");
-  return res.json();
+  const { data } = await axiosInstance.get(
+    `/api/services/student/${studentId}`,
+  );
+  return data;
 };

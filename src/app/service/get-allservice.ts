@@ -1,9 +1,4 @@
-import { BASE_URL } from "../config/api";
-
-const getAuthHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
+import axiosInstance from "./axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,50 +30,32 @@ export interface AssignServicePayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export const getServices = async (): Promise<Service[]> => {
-  const res = await fetch(`${BASE_URL}/api/services`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to fetch services");
-  return res.json();
+  const { data } = await axiosInstance.get("/api/services");
+  return data;
 };
 
 export const getServiceStudents = async (
   serviceId: number,
 ): Promise<ServiceStudent[]> => {
-  const res = await fetch(`${BASE_URL}/api/services/${serviceId}/students`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to fetch service students");
-  return res.json();
+  const { data } = await axiosInstance.get(
+    `/api/services/${serviceId}/students`,
+  );
+  return data;
 };
 
 export const createService = async (
-  data: CreateServicePayload,
+  payload: CreateServicePayload,
 ): Promise<Service> => {
-  const res = await fetch(`${BASE_URL}/api/services`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create service");
-  return res.json();
+  const { data } = await axiosInstance.post("/api/services", payload);
+  return data;
 };
 
 export const assignService = async (
-  data: AssignServicePayload,
+  payload: AssignServicePayload,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/services/assign`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to assign service");
+  await axiosInstance.post("/api/services/assign", payload);
 };
 
 export const deleteService = async (id: number): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/services/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to delete service");
+  await axiosInstance.delete(`/api/services/${id}`);
 };

@@ -4,7 +4,7 @@ import { Card } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { ArrowLeft, Users, ClipboardCheck } from "lucide-react";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import type { RoomDetailResponse } from "../../service/room";
 
 export default function TeacherRoomDetail() {
@@ -12,12 +12,6 @@ export default function TeacherRoomDetail() {
   const [room, setRoom] = useState<RoomDetailResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     if (!roomId) return;
@@ -27,11 +21,7 @@ export default function TeacherRoomDetail() {
   async function fetchRoomDetail() {
     try {
       setLoading(true);
-      const res = await fetch(`${BASE_URL}/api/rooms/id/${roomId}`, {
-        headers: authHeader,
-      });
-      if (!res.ok) throw new Error("Failed to fetch room details");
-      const data: RoomDetailResponse = await res.json();
+      const { data } = await axiosInstance.get(`/api/rooms/id/${roomId}`);
       setRoom(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -40,22 +30,18 @@ export default function TeacherRoomDetail() {
     }
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500 text-sm">Loading room details...</p>
       </div>
     );
-  }
-
-  if (error || !room) {
+  if (error || !room)
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Room not found</p>
       </div>
     );
-  }
-
   return (
     <div className="space-y-6">
       {/* Back Button */}

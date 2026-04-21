@@ -20,11 +20,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import type { RoomInfo, TeacherResponse } from "../../service/teacher";
 import type { AttendanceRecordResponse } from "../../service/attendance";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
 
@@ -50,8 +48,6 @@ interface ToggleHelpModeResponse {
   message: string;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function TeacherAttendance() {
   const [helpMode, setHelpMode] = useState<boolean>(false);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
@@ -67,14 +63,7 @@ export default function TeacherAttendance() {
   const [loadingRoom, setLoadingRoom] = useState<boolean>(false);
   const [togglingHelp, setTogglingHelp] = useState<boolean>(false);
 
-  const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
-  // ── Load teacher's rooms + help mode state on mount ────────────────────────
 
   useEffect(() => {
     fetchRooms();
@@ -82,36 +71,22 @@ export default function TeacherAttendance() {
 
   async function fetchRooms() {
     try {
-      const teacherRes = await fetch(
-        `${BASE_URL}/api/users/teacher/by-user/${userId}`,
-        { headers: authHeader },
+      const { data: teacher } = await axiosInstance.get(
+        `/api/users/teacher/by-user/${userId}`,
       );
-      if (!teacherRes.ok) throw new Error("Failed to fetch teacher");
-      const teacher: TeacherResponse = await teacherRes.json();
       setMyRooms(teacher.rooms || []);
 
-      // ✅ sync help mode from backend on load
-      // TeacherResponse doesn't have helpMode — we rely on toggle response
-      // helpMode starts as false, synced on toggle
-
-      const allRoomsRes = await fetch(`${BASE_URL}/api/rooms`, {
-        headers: authHeader,
-      });
-      if (!allRoomsRes.ok) throw new Error("Failed to fetch all rooms");
-      const allRoomsData = await allRoomsRes.json();
+      const { data: allRoomsData } = await axiosInstance.get("/api/rooms");
       const mapped: RoomInfo[] = allRoomsData.map((r: any) => ({
         roomId: r.id,
         roomNumber: r.roomNumber,
         side: r.side,
       }));
       setAllRooms(mapped);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load rooms");
-      console.error(err);
     }
   }
-
-  // ── When room or date changes, load attendance session ────────────────────
 
   useEffect(() => {
     if (!selectedRoom || !selectedDate) return;
@@ -124,31 +99,22 @@ export default function TeacherAttendance() {
       setSessionExists(false);
       setAttendance([]);
 
-      // get room detail
-      const roomRes = await fetch(`${BASE_URL}/api/rooms/id/${selectedRoom}`, {
-        headers: authHeader,
-      });
-      if (!roomRes.ok) throw new Error("Failed to fetch room");
-      const roomData: RoomResponse = await roomRes.json();
+      const { data: roomData } = await axiosInstance.get(
+        `/api/rooms/id/${selectedRoom}`,
+      );
       setRoomDetail(roomData);
 
-      // try to get existing attendance session
-      const attRes = await fetch(
-        `${BASE_URL}/api/attendance?roomNumber=${roomData.roomNumber}&date=${selectedDate}`,
-        { headers: authHeader },
-      );
-
-      if (attRes.ok) {
-        const records: AttendanceRecordResponse[] = await attRes.json();
-
-        // ✅ empty list = no session yet
+      try {
+        const { data: records } = await axiosInstance.get(
+          `/api/attendance?roomNumber=${roomData.roomNumber}&date=${selectedDate}`,
+        );
         if (records.length === 0) {
           setSessionExists(false);
           setAttendance([]);
         } else {
           setSessionExists(true);
           setAttendance(
-            records.map((r) => ({
+            records.map((r: any) => ({
               recordId: r.recordId,
               studentId: r.studentId,
               studentName: r.studentName,
@@ -156,38 +122,22 @@ export default function TeacherAttendance() {
             })),
           );
         }
-      } else if (attRes.status === 403) {
-        // ✅ access denied — not teacher's room and help mode off
-        toast.error("You don't have access to this room. Enable help mode.");
+      } catch (err: any) {
+        if (err.response?.status === 403) {
+          toast.error("You don't have access to this room. Enable help mode.");
+        }
       }
-      // any other error = no session, stay empty
-    } catch (err) {
-      console.error("Failed to load attendance session:", err);
+    } catch {
+      toast.error("Failed to load room");
     } finally {
       setLoadingRoom(false);
     }
   }
 
-  // ── Toggle help mode ───────────────────────────────────────────────────────
-
   async function handleHelpModeToggle() {
     try {
       setTogglingHelp(true);
-      const res = await fetch(`${BASE_URL}/api/attendance/help-mode`, {
-        method: "PATCH",
-        headers: authHeader,
-      });
-
-      // ✅ show actual backend error
-      if (!res.ok) {
-        const text = await res.text();
-        toast.error(`Failed to toggle help mode: ${text}`);
-        return;
-      }
-
-      const data: ToggleHelpModeResponse = await res.json();
-
-      // ✅ use backend's actual value — don't just flip local state
+      const { data } = await axiosInstance.patch("/api/attendance/help-mode");
       setHelpMode(data.helpMode);
       toast.info(data.message);
     } catch (err: any) {
@@ -197,27 +147,19 @@ export default function TeacherAttendance() {
     }
   }
 
-  // ── Status change ──────────────────────────────────────────────────────────
-
   function handleStatusChange(studentId: number, status: AttendanceStatus) {
     setAttendance((prev) => {
       const existing = prev.find((a) => a.studentId === studentId);
-      if (existing) {
+      if (existing)
         return prev.map((a) =>
           a.studentId === studentId ? { ...a, status } : a,
         );
-      }
       const student = roomDetail?.students.find(
         (s) => s.studentId === studentId,
       );
       return [
         ...prev,
-        {
-          recordId: 0,
-          studentId,
-          studentName: student?.name || "",
-          status,
-        },
+        { recordId: 0, studentId, studentName: student?.name || "", status },
       ];
     });
   }
@@ -226,63 +168,40 @@ export default function TeacherAttendance() {
     return attendance.find((a) => a.studentId === studentId)?.status || null;
   }
 
-  // ── Save attendance ────────────────────────────────────────────────────────
-
   async function handleSave() {
     if (!roomDetail) return;
     try {
       setSaving(true);
-
       if (!sessionExists) {
-        // ✅ create session first
-        const createRes = await fetch(`${BASE_URL}/api/attendance`, {
-          method: "POST",
-          headers: authHeader,
-          body: JSON.stringify({
+        try {
+          await axiosInstance.post("/api/attendance", {
             roomNumber: roomDetail.roomNumber,
             date: selectedDate,
-          }),
-        });
-
-        // ✅ specific messages for known errors
-        if (createRes.status === 403) {
-          throw new Error("Access denied — enable help mode to mark this room");
-        }
-        if (createRes.status === 400) {
-          const text = await createRes.text();
-          throw new Error(text || "Attendance already exists for this date");
-        }
-        if (!createRes.ok)
+          });
+        } catch (err: any) {
+          if (err.response?.status === 403)
+            throw new Error(
+              "Access denied — enable help mode to mark this room",
+            );
+          if (err.response?.status === 400)
+            throw new Error(
+              err.response.data || "Attendance already exists for this date",
+            );
           throw new Error("Failed to create attendance session");
+        }
 
-        // reload to get recordIds
-        const attRes = await fetch(
-          `${BASE_URL}/api/attendance?roomNumber=${roomDetail.roomNumber}&date=${selectedDate}`,
-          { headers: authHeader },
+        const { data: records } = await axiosInstance.get(
+          `/api/attendance?roomNumber=${roomDetail.roomNumber}&date=${selectedDate}`,
         );
-        if (!attRes.ok) throw new Error("Failed to fetch records after create");
-        const records: AttendanceRecordResponse[] = await attRes.json();
-
-        // merge user-selected statuses with recordIds
-        const merged = records.map((r) => {
-          const selected = attendance.find((a) => a.studentId === r.studentId);
-          return {
-            recordId: r.recordId,
-            status: selected?.status || "ABSENT",
-          };
-        });
-
-        // bulk update
-        const bulkRes = await fetch(`${BASE_URL}/api/attendance/bulk`, {
-          method: "PUT",
-          headers: authHeader,
-          body: JSON.stringify({ records: merged }),
-        });
-        if (!bulkRes.ok) throw new Error("Failed to save attendance");
-
-        // ✅ update local records with real recordIds
+        const merged = records.map((r: any) => ({
+          recordId: r.recordId,
+          status:
+            attendance.find((a) => a.studentId === r.studentId)?.status ||
+            "ABSENT",
+        }));
+        await axiosInstance.put("/api/attendance/bulk", { records: merged });
         setAttendance(
-          records.map((r) => {
+          records.map((r: any) => {
             const selected = attendance.find(
               (a) => a.studentId === r.studentId,
             );
@@ -296,19 +215,12 @@ export default function TeacherAttendance() {
         );
         setSessionExists(true);
       } else {
-        // ✅ session exists — just bulk update
         const updates = attendance.map((a) => ({
           recordId: a.recordId,
           status: a.status,
         }));
-        const bulkRes = await fetch(`${BASE_URL}/api/attendance/bulk`, {
-          method: "PUT",
-          headers: authHeader,
-          body: JSON.stringify({ records: updates }),
-        });
-        if (!bulkRes.ok) throw new Error("Failed to update attendance");
+        await axiosInstance.put("/api/attendance/bulk", { records: updates });
       }
-
       toast.success("Attendance saved successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to save attendance");
@@ -317,12 +229,9 @@ export default function TeacherAttendance() {
     }
   }
 
-  // ── Derived state ──────────────────────────────────────────────────────────
-
   const availableRooms = helpMode ? allRooms : myRooms;
   const myRoomIds = new Set(myRooms.map((r) => r.roomId));
   const students = roomDetail?.students || [];
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (

@@ -3,7 +3,6 @@ import { Card } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Home, User, Briefcase, Calendar } from "lucide-react";
 import { Link } from "react-router";
-import { jwtDecode } from "jwt-decode";
 import { getStudentByUserId } from "../../service/Studentdashboard";
 import type { StudentProfile } from "../../service/Studentdashboard";
 
@@ -14,9 +13,6 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchStudent = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-
         const userId = localStorage.getItem("userId");
         if (!userId) return;
         const data = await getStudentByUserId(userId);
@@ -27,31 +23,26 @@ export default function StudentDashboard() {
         setLoading(false);
       }
     };
-
     fetchStudent();
   }, []);
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Loading...</p>
       </div>
     );
-  }
-
-  if (!student) {
+  if (!student)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Failed to load student data.</p>
       </div>
     );
-  }
 
   return (
     <div className="space-y-8">
-      {/* Welcome Banner */}
       <Card className="p-8 bg-gradient-to-br from-purple-500 to-blue-600 text-white">
         <h2 className="text-3xl font-bold mb-2">
           Welcome back, {student.name.split(" ")[0]}! 👋
@@ -59,7 +50,6 @@ export default function StudentDashboard() {
         <p className="text-purple-100">Here's your accommodation overview</p>
       </Card>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
@@ -77,7 +67,6 @@ export default function StudentDashboard() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -94,7 +83,6 @@ export default function StudentDashboard() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -115,7 +103,6 @@ export default function StudentDashboard() {
         </Card>
       </div>
 
-      {/* Today's Task */}
       <Card className="p-6 border-2 border-blue-200 bg-blue-50">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -138,7 +125,6 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
-      {/* Room Information */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Room Information
@@ -172,7 +158,6 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
-      {/* Services */}
       {student.services.length > 0 && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -192,7 +177,6 @@ export default function StudentDashboard() {
         </Card>
       )}
 
-      {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Link to="/student/tasks">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-purple-500">
@@ -207,7 +191,6 @@ export default function StudentDashboard() {
             </p>
           </Card>
         </Link>
-
         <Link to="/student/services">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-purple-500">
             <div className="flex items-center gap-3 mb-3">
@@ -221,7 +204,6 @@ export default function StudentDashboard() {
             </p>
           </Card>
         </Link>
-
         <Link to="/student/attendance">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-purple-500">
             <div className="flex items-center gap-3 mb-3">

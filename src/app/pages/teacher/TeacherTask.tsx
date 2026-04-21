@@ -17,19 +17,14 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { CheckCircle2, Clock, XCircle, Filter } from "lucide-react";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 import type { TaskResponse } from "../../service/TeacherTask";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoomOption {
   id: number;
   roomNumber: string;
   side: string;
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const DAYS: string[] = [
   "Monday",
   "Tuesday",
@@ -40,25 +35,15 @@ const DAYS: string[] = [
   "Sunday",
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function AllRoomsTasks() {
   const [allRooms, setAllRooms] = useState<RoomOption[]>([]);
   const [allTasks, setAllTasks] = useState<TaskResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // ── Filters ──────────────────────────────────────────────────────────────
   const [filterSide, setFilterSide] = useState<string>("ALL");
   const [filterRoom, setFilterRoom] = useState<string>("ALL");
   const [filterDay, setFilterDay] = useState<string>("ALL");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
-
-  const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     fetchData();
@@ -67,13 +52,7 @@ export default function AllRoomsTasks() {
   async function fetchData() {
     try {
       setLoading(true);
-
-      // 1. get all rooms
-      const roomsRes = await fetch(`${BASE_URL}/api/rooms`, {
-        headers: authHeader,
-      });
-      if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
-      const roomsData = await roomsRes.json();
+      const { data: roomsData } = await axiosInstance.get("/api/rooms");
       const rooms: RoomOption[] = roomsData.map((r: any) => ({
         id: r.id,
         roomNumber: r.roomNumber,
@@ -81,21 +60,18 @@ export default function AllRoomsTasks() {
       }));
       setAllRooms(rooms);
 
-      // 2. fetch tasks for all rooms in parallel
       const taskArrays = await Promise.all(
-        rooms.map(async (room: RoomOption) => {
-          const res = await fetch(
-            `${BASE_URL}/api/tasks/room/${room.roomNumber}`,
-            { headers: authHeader },
-          );
-          if (res.ok) {
-            const tasks: TaskResponse[] = await res.json();
-            return tasks;
+        rooms.map(async (room) => {
+          try {
+            const { data } = await axiosInstance.get(
+              `/api/tasks/room/${room.roomNumber}`,
+            );
+            return data as TaskResponse[];
+          } catch {
+            return [];
           }
-          return [];
         }),
       );
-
       setAllTasks(taskArrays.flat());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -104,13 +80,9 @@ export default function AllRoomsTasks() {
     }
   }
 
-  // ── Filtering logic ────────────────────────────────────────────────────────
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
-  const todayName = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-  });
-
-  const filteredRooms = allRooms.filter((room: RoomOption) => {
+  const filteredRooms = allRooms.filter((room) => {
     if (
       filterSide !== "ALL" &&
       room.side.toLowerCase() !== filterSide.toLowerCase()
@@ -121,7 +93,7 @@ export default function AllRoomsTasks() {
   });
 
   function getFilteredTasksForRoom(roomNumber: string): TaskResponse[] {
-    return allTasks.filter((t: TaskResponse) => {
+    return allTasks.filter((t) => {
       if (t.roomNumber !== roomNumber) return false;
       if (
         filterDay !== "ALL" &&
@@ -134,21 +106,17 @@ export default function AllRoomsTasks() {
     });
   }
 
-  // ── When side changes, reset room filter ──────────────────────────────────
   function handleSideChange(value: string) {
     setFilterSide(value);
     setFilterRoom("ALL");
   }
 
-  // ── Rooms available in selected side for room dropdown ────────────────────
   const roomsForDropdown =
     filterSide === "ALL"
       ? allRooms
       : allRooms.filter(
-          (r: RoomOption) => r.side.toLowerCase() === filterSide.toLowerCase(),
+          (r) => r.side.toLowerCase() === filterSide.toLowerCase(),
         );
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
 
   function statusBadge(status: string) {
     switch (status?.toUpperCase()) {
@@ -178,27 +146,21 @@ export default function AllRoomsTasks() {
 
   const daysToShow = filterDay === "ALL" ? DAYS : [filterDay];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500 text-sm">Loading all tasks...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-red-500 text-sm">Error: {error}</p>
       </div>
     );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">
           All Room Tasks
@@ -208,14 +170,12 @@ export default function AllRoomsTasks() {
         </p>
       </div>
 
-      {/* Filters */}
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-gray-500" />
           <p className="text-sm font-medium text-gray-700">Filters</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Side */}
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Side</p>
             <Select value={filterSide} onValueChange={handleSideChange}>
@@ -229,8 +189,6 @@ export default function AllRoomsTasks() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Room */}
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Room</p>
             <Select value={filterRoom} onValueChange={setFilterRoom}>
@@ -239,7 +197,7 @@ export default function AllRoomsTasks() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Rooms</SelectItem>
-                {roomsForDropdown.map((room: RoomOption) => (
+                {roomsForDropdown.map((room) => (
                   <SelectItem key={room.id} value={room.roomNumber}>
                     Room {room.roomNumber}
                   </SelectItem>
@@ -247,8 +205,6 @@ export default function AllRoomsTasks() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Day */}
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Day</p>
             <Select value={filterDay} onValueChange={setFilterDay}>
@@ -258,7 +214,7 @@ export default function AllRoomsTasks() {
               <SelectContent>
                 <SelectItem value="ALL">All Days</SelectItem>
                 <SelectItem value={todayName}>Today ({todayName})</SelectItem>
-                {DAYS.map((day: string) => (
+                {DAYS.map((day) => (
                   <SelectItem key={day} value={day}>
                     {day}
                   </SelectItem>
@@ -266,8 +222,6 @@ export default function AllRoomsTasks() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Status */}
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Status</p>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -282,8 +236,6 @@ export default function AllRoomsTasks() {
             </Select>
           </div>
         </div>
-
-        {/* Active filter summary */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
           {filterSide !== "ALL" && (
             <span className="px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">
@@ -324,27 +276,21 @@ export default function AllRoomsTasks() {
         </div>
       </Card>
 
-      {/* No results */}
       {filteredRooms.length === 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500">No rooms match your filters</p>
         </Card>
       )}
 
-      {/* Task tables per room */}
-      {filteredRooms.map((room: RoomOption) => {
+      {filteredRooms.map((room) => {
         const tasks = getFilteredTasksForRoom(room.roomNumber);
-
-        // skip rooms with no tasks when filtering by day or status
         if (
           (filterDay !== "ALL" || filterStatus !== "ALL") &&
           tasks.length === 0
         )
           return null;
-
         return (
           <Card key={room.id} className="overflow-hidden">
-            {/* Room Header */}
             <div className="bg-gray-50 px-6 py-4 border-b">
               <div className="flex items-center justify-between">
                 <div>
@@ -367,8 +313,6 @@ export default function AllRoomsTasks() {
                 </Badge>
               </div>
             </div>
-
-            {/* Table */}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -381,18 +325,13 @@ export default function AllRoomsTasks() {
               </TableHeader>
               <TableBody>
                 {filterDay === "ALL" ? (
-                  // show all days with or without tasks
-                  daysToShow.map((day: string) => {
+                  daysToShow.map((day) => {
                     const task = tasks.find(
-                      (t: TaskResponse) =>
-                        t.dayOfWeek.toLowerCase() === day.toLowerCase(),
+                      (t) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
                     );
                     const isToday =
                       day.toLowerCase() === todayName.toLowerCase();
-
-                    // skip if status filter active and no task
                     if (filterStatus !== "ALL" && !task) return null;
-
                     return (
                       <TableRow
                         key={day}
@@ -423,8 +362,7 @@ export default function AllRoomsTasks() {
                       </TableRow>
                     );
                   })
-                ) : // show only filtered tasks
-                tasks.length === 0 ? (
+                ) : tasks.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={5}
@@ -434,7 +372,7 @@ export default function AllRoomsTasks() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  tasks.map((task: TaskResponse) => {
+                  tasks.map((task) => {
                     const isToday =
                       task.dayOfWeek.toLowerCase() === todayName.toLowerCase();
                     return (

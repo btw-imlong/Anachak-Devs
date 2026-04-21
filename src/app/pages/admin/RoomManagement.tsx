@@ -43,7 +43,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { BASE_URL } from "../../config/api";
-
+import axiosInstance from "../../service/axios";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoomOption {
@@ -133,44 +133,152 @@ export default function RoomManagement() {
     try {
       setLoading(true);
       const [roomsRes, teachersRes, studentsRes] = await Promise.all([
-        fetch(`${BASE_URL}/api/rooms`, { headers: authHeader }),
-        fetch(`${BASE_URL}/api/users/teachers?page=0&size=1000`, {
-          headers: authHeader,
-        }),
-        fetch(`${BASE_URL}/api/users/students?page=0&size=1000`, {
-          headers: authHeader,
-        }),
+        axiosInstance.get("/api/rooms"),
+        axiosInstance.get("/api/users/teachers?page=0&size=1000"),
+        axiosInstance.get("/api/users/students?page=0&size=1000"),
       ]);
 
-      if (roomsRes.ok) {
-        const data = await roomsRes.json();
-        const mapped: RoomOption[] = data.map((r: any) => ({
-          id: r.id,
-          roomNumber: r.roomNumber,
-          side: r.side,
-          totalStudents: r.students?.length ?? 0,
-          teachers: r.teachers ?? [],
-          students: r.students ?? [],
-        }));
-        setAllRooms(mapped);
-
-        // Keep detail modal in sync after fetchAll
-        setSelectedRoomDetail((prev) =>
-          prev ? (mapped.find((r) => r.id === prev.id) ?? null) : null,
-        );
-      }
-      if (teachersRes.ok) {
-        const data = await teachersRes.json();
-        setAllTeachers(data.content ?? []);
-      }
-      if (studentsRes.ok) {
-        const data = await studentsRes.json();
-        setAllStudents(data.content ?? []);
-      }
+      const mapped: RoomOption[] = roomsRes.data.map((r: any) => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        side: r.side,
+        totalStudents: r.students?.length ?? 0,
+        teachers: r.teachers ?? [],
+        students: r.students ?? [],
+      }));
+      setAllRooms(mapped);
+      setSelectedRoomDetail((prev) =>
+        prev ? (mapped.find((r) => r.id === prev.id) ?? null) : null,
+      );
+      setAllTeachers(teachersRes.data.content ?? []);
+      setAllStudents(studentsRes.data.content ?? []);
     } catch {
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreateRoom() {
+    if (!roomForm.roomNumber || !roomForm.side) {
+      toast.warning("Please fill in all fields");
+      return;
+    }
+    try {
+      setCreatingRoom(true);
+      await axiosInstance.post("/api/rooms", roomForm);
+      toast.success(`Room ${roomForm.roomNumber} created successfully`);
+      setCreateRoomOpen(false);
+      setRoomForm({ roomNumber: "", side: "" });
+      await fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data || "Failed to create room");
+    } finally {
+      setCreatingRoom(false);
+    }
+  }
+
+  async function handleAssignTeacher() {
+    if (!selectedRoomForTeacher || !selectedTeacherId) {
+      toast.warning("Please select both a room and a teacher");
+      return;
+    }
+    const chosenRoom = allRooms.find(
+      (r) => r.roomNumber === selectedRoomForTeacher,
+    );
+    if (chosenRoom && chosenRoom.teachers.length > 0) {
+      toast.error(
+        `Room ${selectedRoomForTeacher} already has a teacher assigned.`,
+      );
+      return;
+    }
+    try {
+      setAssigningTeacher(true);
+      await axiosInstance.post("/api/teacher-room/assign", {
+        teacherId: Number(selectedTeacherId),
+        roomNumber: selectedRoomForTeacher,
+      });
+      toast.success("Teacher assigned successfully");
+      setSelectedRoomForTeacher("");
+      setSelectedTeacherId("");
+      await fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data || "Failed to assign teacher");
+    } finally {
+      setAssigningTeacher(false);
+    }
+  }
+
+  async function handleRemoveTeacher() {
+    if (!removeTarget) return;
+    try {
+      await axiosInstance.delete(
+        `/api/teacher-room/remove?teacherId=${removeTarget.teacherId}&roomNumber=${removeTarget.roomNumber}`,
+      );
+      toast.success("Teacher removed from room");
+      setRemoveTeacherOpen(false);
+      setRemoveTarget(null);
+      await fetchAll();
+    } catch {
+      toast.error("Failed to remove teacher");
+    }
+  }
+
+  async function handleAssignStudents() {
+    if (!selectedRoomForStudent || selectedStudentIds.length === 0) {
+      toast.warning("Please select a room and at least one student");
+      return;
+    }
+    try {
+      setAssigningStudents(true);
+      await axiosInstance.post("/api/rooms/assign-students", {
+        roomNumber: selectedRoomForStudent,
+        studentIds: selectedStudentIds,
+      });
+      toast.success(
+        `${selectedStudentIds.length} student(s) assigned to room ${selectedRoomForStudent}`,
+      );
+      setSelectedStudentIds([]);
+      setSelectedRoomForStudent("");
+      await fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data || "Failed to assign students");
+    } finally {
+      setAssigningStudents(false);
+    }
+  }
+
+  async function handleRemoveStudent() {
+    if (!removeStudentTarget) return;
+    try {
+      await axiosInstance.delete("/api/rooms/remove-students", {
+        data: {
+          roomNumber: removeStudentTarget.roomNumber,
+          studentIds: [removeStudentTarget.studentId],
+        },
+      });
+      toast.success(
+        `${removeStudentTarget.studentName} removed from room ${removeStudentTarget.roomNumber}`,
+      );
+      setRemoveStudentOpen(false);
+      setRemoveStudentTarget(null);
+      await fetchAll();
+    } catch {
+      toast.error("Failed to remove student");
+    }
+  }
+
+  // ── Delete room (inline in JSX) ────────────────────────────────────────
+  // Replace the inline delete fetch inside the Trash2 button with:
+  async function handleDeleteRoom(room: RoomOption) {
+    if (!confirm(`Delete room ${room.roomNumber}? This cannot be undone.`))
+      return;
+    try {
+      await axiosInstance.delete(`/api/rooms/id/${room.id}`);
+      toast.success(`Room ${room.roomNumber} deleted`);
+      await fetchAll();
+    } catch {
+      toast.error("Failed to delete room");
     }
   }
 
@@ -202,152 +310,6 @@ export default function RoomManagement() {
   );
 
   // ── Create room ────────────────────────────────────────────────────────────
-
-  async function handleCreateRoom() {
-    if (!roomForm.roomNumber || !roomForm.side) {
-      toast.warning("Please fill in all fields");
-      return;
-    }
-    try {
-      setCreatingRoom(true);
-      const res = await fetch(`${BASE_URL}/api/rooms`, {
-        method: "POST",
-        headers: authHeader,
-        body: JSON.stringify(roomForm),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to create room");
-      }
-      toast.success(`Room ${roomForm.roomNumber} created successfully`);
-      setCreateRoomOpen(false);
-      setRoomForm({ roomNumber: "", side: "" });
-      await fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create room");
-    } finally {
-      setCreatingRoom(false);
-    }
-  }
-
-  // ── Assign teacher ─────────────────────────────────────────────────────────
-
-  async function handleAssignTeacher() {
-    if (!selectedRoomForTeacher || !selectedTeacherId) {
-      toast.warning("Please select both a room and a teacher");
-      return;
-    }
-    const chosenRoom = allRooms.find(
-      (r) => r.roomNumber === selectedRoomForTeacher,
-    );
-    if (chosenRoom && chosenRoom.teachers.length > 0) {
-      toast.error(
-        `Room ${selectedRoomForTeacher} already has a teacher assigned.`,
-      );
-      return;
-    }
-    try {
-      setAssigningTeacher(true);
-      const res = await fetch(`${BASE_URL}/api/teacher-room/assign`, {
-        method: "POST",
-        headers: authHeader,
-        body: JSON.stringify({
-          teacherId: Number(selectedTeacherId),
-          roomNumber: selectedRoomForTeacher,
-        }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to assign teacher");
-      }
-      toast.success("Teacher assigned successfully");
-      setSelectedRoomForTeacher("");
-      setSelectedTeacherId("");
-      await fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to assign teacher");
-    } finally {
-      setAssigningTeacher(false);
-    }
-  }
-
-  // ── Remove teacher ─────────────────────────────────────────────────────────
-
-  async function handleRemoveTeacher() {
-    if (!removeTarget) return;
-    try {
-      const res = await fetch(
-        `${BASE_URL}/api/teacher-room/remove?teacherId=${removeTarget.teacherId}&roomNumber=${removeTarget.roomNumber}`,
-        { method: "DELETE", headers: authHeader },
-      );
-      if (!res.ok) throw new Error("Failed to remove teacher");
-      toast.success("Teacher removed from room");
-      setRemoveTeacherOpen(false);
-      setRemoveTarget(null);
-      await fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove teacher");
-    }
-  }
-
-  // ── Assign students ────────────────────────────────────────────────────────
-
-  async function handleAssignStudents() {
-    if (!selectedRoomForStudent || selectedStudentIds.length === 0) {
-      toast.warning("Please select a room and at least one student");
-      return;
-    }
-    try {
-      setAssigningStudents(true);
-      const res = await fetch(`${BASE_URL}/api/rooms/assign-students`, {
-        method: "POST",
-        headers: authHeader,
-        body: JSON.stringify({
-          roomNumber: selectedRoomForStudent,
-          studentIds: selectedStudentIds,
-        }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to assign students");
-      }
-      toast.success(
-        `${selectedStudentIds.length} student(s) assigned to room ${selectedRoomForStudent}`,
-      );
-      setSelectedStudentIds([]);
-      setSelectedRoomForStudent("");
-      await fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to assign students");
-    } finally {
-      setAssigningStudents(false);
-    }
-  }
-
-  // ── Remove student ─────────────────────────────────────────────────────────
-
-  async function handleRemoveStudent() {
-    if (!removeStudentTarget) return;
-    try {
-      const res = await fetch(`${BASE_URL}/api/rooms/remove-students`, {
-        method: "DELETE",
-        headers: authHeader,
-        body: JSON.stringify({
-          roomNumber: removeStudentTarget.roomNumber,
-          studentIds: [removeStudentTarget.studentId],
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to remove student");
-      toast.success(
-        `${removeStudentTarget.studentName} removed from room ${removeStudentTarget.roomNumber}`,
-      );
-      setRemoveStudentOpen(false);
-      setRemoveStudentTarget(null);
-      await fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove student");
-    }
-  }
 
   function toggleStudent(studentId: number) {
     setSelectedStudentIds((prev) =>
@@ -562,28 +524,7 @@ export default function RoomManagement() {
                           variant="ghost"
                           size="sm"
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={async () => {
-                            if (
-                              !confirm(
-                                `Delete room ${room.roomNumber}? This cannot be undone.`,
-                              )
-                            )
-                              return;
-                            try {
-                              const res = await fetch(
-                                `${BASE_URL}/api/rooms/id/${room.id}`,
-                                {
-                                  method: "DELETE",
-                                  headers: authHeader,
-                                },
-                              );
-                              if (!res.ok) throw new Error();
-                              toast.success(`Room ${room.roomNumber} deleted`);
-                              await fetchAll();
-                            } catch {
-                              toast.error("Failed to delete room");
-                            }
-                          }}
+                          onClick={() => handleDeleteRoom(room)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

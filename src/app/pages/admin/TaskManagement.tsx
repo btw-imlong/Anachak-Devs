@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { BASE_URL } from "../../config/api";
-
+import axiosInstance from "../../service/axios";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoomOption {
@@ -170,10 +170,6 @@ export default function AdminTaskManagement() {
   const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
 
   const token = localStorage.getItem("token");
-  const authHeader = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     fetchData();
@@ -184,11 +180,7 @@ export default function AdminTaskManagement() {
   async function fetchData() {
     try {
       setLoading(true);
-      const roomsRes = await fetch(`${BASE_URL}/api/rooms`, {
-        headers: authHeader,
-      });
-      if (!roomsRes.ok) throw new Error();
-      const roomsData = await roomsRes.json();
+      const { data: roomsData } = await axiosInstance.get("/api/rooms");
       const rooms: RoomOption[] = roomsData.map((r: any) => ({
         id: r.id,
         roomNumber: r.roomNumber,
@@ -196,28 +188,101 @@ export default function AdminTaskManagement() {
       }));
       setAllRooms(rooms);
 
-      // fetch tasks for all rooms in parallel
       const taskArrays = await Promise.all(
         rooms.map(async (room) => {
-          const res = await fetch(
-            `${BASE_URL}/api/tasks/room/${room.roomNumber}`,
-            { headers: authHeader },
-          );
-          return res.ok ? ((await res.json()) as TaskResponse[]) : [];
+          try {
+            const { data } = await axiosInstance.get(
+              `/api/tasks/room/${room.roomNumber}`,
+            );
+            return data as TaskResponse[];
+          } catch {
+            return [];
+          }
         }),
       );
       setAllTasks(taskArrays.flat());
 
-      // fetch this week's completions across all rooms
-      const compRes = await fetch(
-        `${BASE_URL}/api/tasks/completions?from=${WEEK_FROM}&to=${WEEK_TO}`,
-        { headers: authHeader },
-      );
-      if (compRes.ok) setCompletions(await compRes.json());
+      try {
+        const { data } = await axiosInstance.get(
+          `/api/tasks/completions?from=${WEEK_FROM}&to=${WEEK_TO}`,
+        );
+        setCompletions(data);
+      } catch {}
     } catch {
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreate() {
+    if (!form.title || !form.roomNumber || !form.dayOfWeek || !form.taskTime) {
+      toast.warning("Please fill in all required fields");
+      return;
+    }
+    try {
+      setSaving(true);
+      const { data: created } = await axiosInstance.post("/api/tasks", form);
+      setAllTasks((prev) => [...prev, created]);
+      setCreateOpen(false);
+      setForm(EMPTY_FORM);
+      toast.success(`Task "${created.title}" created`);
+    } catch (err: any) {
+      const msg = err.response?.data || "Failed to create task";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEdit() {
+    if (!selectedTask || !form.title || !form.dayOfWeek || !form.taskTime) {
+      toast.warning("Please fill in all required fields");
+      return;
+    }
+    try {
+      setSaving(true);
+      const { data: updated } = await axiosInstance.put(
+        `/api/tasks/${selectedTask.taskId}`,
+        {
+          title: form.title,
+          description: form.description,
+          dayOfWeek: form.dayOfWeek,
+          taskTime: form.taskTime,
+        },
+      );
+      setAllTasks((prev) =>
+        prev.map((t) => (t.taskId === updated.taskId ? updated : t)),
+      );
+      setEditOpen(false);
+      setSelectedTask(null);
+      toast.success(`Task "${updated.title}" updated`);
+    } catch (err: any) {
+      const msg = err.response?.data || "Failed to update task";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedTask) return;
+    try {
+      setDeletingId(selectedTask.taskId);
+      await axiosInstance.delete(`/api/tasks/${selectedTask.taskId}`);
+      setAllTasks((prev) =>
+        prev.filter((t) => t.taskId !== selectedTask.taskId),
+      );
+      setCompletions((prev) =>
+        prev.filter((c) => c.taskId !== selectedTask.taskId),
+      );
+      setDeleteOpen(false);
+      setSelectedTask(null);
+      toast.success("Task deleted");
+    } catch {
+      toast.error("Failed to delete task");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -236,35 +301,6 @@ export default function AdminTaskManagement() {
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
-  async function handleCreate() {
-    if (!form.title || !form.roomNumber || !form.dayOfWeek || !form.taskTime) {
-      toast.warning("Please fill in all required fields");
-      return;
-    }
-    try {
-      setSaving(true);
-      const res = await fetch(`${BASE_URL}/api/tasks`, {
-        method: "POST",
-        headers: authHeader,
-        body: JSON.stringify(form),
-      });
-      if (res.status === 400) {
-        toast.error((await res.text()) || "Duplicate task");
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const created: TaskResponse = await res.json();
-      setAllTasks((prev) => [...prev, created]);
-      setCreateOpen(false);
-      setForm(EMPTY_FORM);
-      toast.success(`Task "${created.title}" created`);
-    } catch {
-      toast.error("Failed to create task");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   function openEdit(task: TaskResponse) {
     setSelectedTask(task);
     setForm({
@@ -275,67 +311,6 @@ export default function AdminTaskManagement() {
       taskTime: task.taskTime,
     });
     setEditOpen(true);
-  }
-
-  async function handleEdit() {
-    if (!selectedTask || !form.title || !form.dayOfWeek || !form.taskTime) {
-      toast.warning("Please fill in all required fields");
-      return;
-    }
-    try {
-      setSaving(true);
-      const res = await fetch(`${BASE_URL}/api/tasks/${selectedTask.taskId}`, {
-        method: "PUT",
-        headers: authHeader,
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          dayOfWeek: form.dayOfWeek,
-          taskTime: form.taskTime,
-        }),
-      });
-      if (res.status === 400) {
-        toast.error((await res.text()) || "Duplicate task");
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const updated: TaskResponse = await res.json();
-      setAllTasks((prev) =>
-        prev.map((t) => (t.taskId === updated.taskId ? updated : t)),
-      );
-      setEditOpen(false);
-      setSelectedTask(null);
-      toast.success(`Task "${updated.title}" updated`);
-    } catch {
-      toast.error("Failed to update task");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!selectedTask) return;
-    try {
-      setDeletingId(selectedTask.taskId);
-      const res = await fetch(`${BASE_URL}/api/tasks/${selectedTask.taskId}`, {
-        method: "DELETE",
-        headers: authHeader,
-      });
-      if (!res.ok) throw new Error();
-      setAllTasks((prev) =>
-        prev.filter((t) => t.taskId !== selectedTask.taskId),
-      );
-      setCompletions((prev) =>
-        prev.filter((c) => c.taskId !== selectedTask.taskId),
-      );
-      setDeleteOpen(false);
-      setSelectedTask(null);
-      toast.success("Task deleted");
-    } catch {
-      toast.error("Failed to delete task");
-    } finally {
-      setDeletingId(null);
-    }
   }
 
   function openCreatePrefilled(roomNumber: string, day: string) {

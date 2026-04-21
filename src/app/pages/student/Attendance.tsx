@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Calendar, TrendingUp } from "lucide-react";
-import { BASE_URL } from "../../config/api";
+import axiosInstance from "../../service/axios";
 
 interface AttendanceRecord {
   recordId: number;
@@ -15,45 +15,34 @@ interface AttendanceRecord {
 
 type FilterOption = "ALL" | "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
 
-const ATTENDANCE_URL = `${BASE_URL}/api/student/attendance`;
-
-const getHeaders = (): HeadersInit => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
-
 const getDateRange = (
   filter: FilterOption,
 ): { from: string; to: string } | null => {
   const today = new Date();
   const to = today.toISOString().split("T")[0];
-
   if (filter === "THIS_MONTH") {
-    const from = new Date(today.getFullYear(), today.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    return { from, to };
+    return {
+      from: new Date(today.getFullYear(), today.getMonth(), 1)
+        .toISOString()
+        .split("T")[0],
+      to,
+    };
   }
-
   if (filter === "LAST_3_MONTHS") {
-    const from = new Date(
-      today.getFullYear(),
-      today.getMonth() - 3,
-      today.getDate(),
-    )
-      .toISOString()
-      .split("T")[0];
-    return { from, to };
+    return {
+      from: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
+        .toISOString()
+        .split("T")[0],
+      to,
+    };
   }
-
   if (filter === "THIS_YEAR") {
-    const from = new Date(today.getFullYear(), 0, 1)
-      .toISOString()
-      .split("T")[0];
-    return { from, to };
+    return {
+      from: new Date(today.getFullYear(), 0, 1).toISOString().split("T")[0],
+      to,
+    };
   }
-
-  return null; // ALL — no date filter
+  return null;
 };
 
 export default function StudentAttendance() {
@@ -70,12 +59,9 @@ export default function StudentAttendance() {
     try {
       const range = getDateRange(selectedFilter);
       const url = range
-        ? `${ATTENDANCE_URL}/range?from=${range.from}&to=${range.to}`
-        : ATTENDANCE_URL;
-
-      const res = await fetch(url, { headers: getHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch attendance");
-      const data: AttendanceRecord[] = await res.json();
+        ? `/api/student/attendance/range?from=${range.from}&to=${range.to}`
+        : "/api/student/attendance";
+      const { data } = await axiosInstance.get(url);
       setAttendance(data);
     } catch (err) {
       setError((err as Error).message);
@@ -86,18 +72,12 @@ export default function StudentAttendance() {
 
   useEffect(() => {
     fetchAttendance(filter);
-  }, [filter]); // 👈 auto re-fetch when filter changes
+  }, [filter]);
 
-  const presentCount: number = attendance.filter(
-    (a) => a.status === "PRESENT",
-  ).length;
-  const lateCount: number = attendance.filter(
-    (a) => a.status === "LATE",
-  ).length;
-  const absentCount: number = attendance.filter(
-    (a) => a.status === "ABSENT",
-  ).length;
-  const attendanceRate: number =
+  const presentCount = attendance.filter((a) => a.status === "PRESENT").length;
+  const lateCount = attendance.filter((a) => a.status === "LATE").length;
+  const absentCount = attendance.filter((a) => a.status === "ABSENT").length;
+  const attendanceRate =
     attendance.length > 0
       ? Math.round((presentCount / attendance.length) * 100)
       : 0;
@@ -118,18 +98,12 @@ export default function StudentAttendance() {
           </h2>
           <p className="text-sm text-gray-500">Track your attendance records</p>
         </div>
-
-        {/* Filter Tabs */}
         <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
           {filterOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => setFilter(option.value)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                filter === option.value
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === option.value ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
             >
               {option.label}
             </button>
@@ -137,7 +111,6 @@ export default function StudentAttendance() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
@@ -152,7 +125,6 @@ export default function StudentAttendance() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -166,7 +138,6 @@ export default function StudentAttendance() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -178,7 +149,6 @@ export default function StudentAttendance() {
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -192,26 +162,22 @@ export default function StudentAttendance() {
         </Card>
       </div>
 
-      {/* Records */}
       <Card className="overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b">
           <h3 className="font-semibold text-gray-900">
             Recent Attendance Records
           </h3>
         </div>
-
         {loading ? (
           <div className="p-12 text-center text-gray-400">Loading...</div>
         ) : error ? (
           <div className="p-12 text-center text-red-500">{error}</div>
         ) : attendance.length > 0 ? (
           <div className="divide-y">
-            {attendance.map((record: AttendanceRecord, index: number) => (
+            {attendance.map((record, index) => (
               <div
                 key={record.recordId}
-                className={`p-5 flex items-center justify-between hover:bg-gray-50 transition-colors ${
-                  index === 0 ? "bg-blue-50" : ""
-                }`}
+                className={`p-5 flex items-center justify-between hover:bg-gray-50 transition-colors ${index === 0 ? "bg-blue-50" : ""}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -231,7 +197,6 @@ export default function StudentAttendance() {
                     </p>
                   </div>
                 </div>
-
                 <Badge
                   className={
                     record.status === "PRESENT"
@@ -254,7 +219,6 @@ export default function StudentAttendance() {
         )}
       </Card>
 
-      {/* Performance Insights */}
       <Card className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
         <h3 className="font-semibold text-gray-900 mb-3">
           Attendance Performance
@@ -274,7 +238,6 @@ export default function StudentAttendance() {
               </span>
             </div>
           </div>
-
           {attendanceRate >= 90 && (
             <div className="p-3 bg-green-100 border border-green-200 rounded-lg">
               <p className="text-sm text-green-800">
@@ -282,7 +245,6 @@ export default function StudentAttendance() {
               </p>
             </div>
           )}
-
           {attendanceRate >= 75 && attendanceRate < 90 && (
             <div className="p-3 bg-yellow-100 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
@@ -290,7 +252,6 @@ export default function StudentAttendance() {
               </p>
             </div>
           )}
-
           {attendanceRate < 75 && attendanceRate > 0 && (
             <div className="p-3 bg-red-100 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">

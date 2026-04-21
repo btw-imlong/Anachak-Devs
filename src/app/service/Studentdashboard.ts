@@ -1,5 +1,4 @@
-import { jwtDecode } from "jwt-decode";
-import { BASE_URL } from "../config/api";
+import axiosInstance from "./axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,16 +35,8 @@ export interface StudentProfile {
 export const getStudentByUserId = async (
   userId: number | string,
 ): Promise<StudentProfile> => {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/users/student/by-user/${userId}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) throw new Error("Failed to fetch student profile");
-  return res.json();
+  const { data } = await axiosInstance.get(
+    `/api/users/student/by-user/${userId}`,
+  );
+  return data;
 };
-const token = localStorage.getItem("token");
-const decoded: any = jwtDecode(token!);
-console.log("decoded:", decoded); // ← paste what prints here
