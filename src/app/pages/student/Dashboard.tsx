@@ -42,15 +42,15 @@ export default function StudentDashboard() {
     );
 
   return (
-    <div className="space-y-8">
-      <Card className="p-8 bg-gradient-to-br from-purple-500 to-blue-600 text-white">
-        <h2 className="text-3xl font-bold mb-2">
+    <div className="space-y-6 sm:space-y-8">
+      <Card className="p-6 sm:p-8 bg-gradient-to-br from-purple-500 to-blue-600 text-white">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2">
           Welcome back, {student.name.split(" ")[0]}! 👋
         </h2>
         <p className="text-purple-100">Here's your accommodation overview</p>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -83,7 +83,7 @@ export default function StudentDashboard() {
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-6 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Service Role</p>
@@ -103,13 +103,13 @@ export default function StudentDashboard() {
         </Card>
       </div>
 
-      <Card className="p-6 border-2 border-blue-200 bg-blue-50">
+      <Card className="p-5 sm:p-6 border-2 border-blue-200 bg-blue-50">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
             <Calendar className="w-6 h-6 text-white" />
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
               <h3 className="font-semibold text-gray-900">
                 Today's Task - {today}
               </h3>
@@ -125,11 +125,11 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-5 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Room Information
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Room Number</p>
             <p className="text-2xl font-bold text-gray-900">
@@ -159,11 +159,11 @@ export default function StudentDashboard() {
       </Card>
 
       {student.services.length > 0 && (
-        <Card className="p-6">
+        <Card className="p-5 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             My Services
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {student.services.map((service) => (
               <div
                 key={service.serviceId}
@@ -177,7 +177,7 @@ export default function StudentDashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Link to="/student/tasks">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-purple-500">
             <div className="flex items-center gap-3 mb-3">
@@ -204,7 +204,7 @@ export default function StudentDashboard() {
             </p>
           </Card>
         </Link>
-        <Link to="/student/attendance">
+        <Link to="/student/attendance" className="sm:col-span-2 lg:col-span-1">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-purple-500">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">

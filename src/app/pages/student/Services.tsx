@@ -69,15 +69,15 @@ export default function StudentServices() {
           services.map((service) => (
             <Card
               key={service.assignmentId}
-              className="p-6 hover:shadow-md transition-all border border-gray-200"
+              className="p-4 sm:p-6 hover:shadow-md transition-all border border-gray-200"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-6 h-6 text-purple-600" />
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
                       {service.serviceName}
                     </h3>
                     <Badge className="bg-purple-600 hover:bg-purple-600 text-white text-xs">
@@ -87,7 +87,7 @@ export default function StudentServices() {
                   <p className="text-sm text-gray-500 mb-3">
                     {service.serviceDescription}
                   </p>
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-gray-400">
                     <span>
                       Assignment ID:{" "}
                       <span className="font-medium text-gray-600">
@@ -114,7 +114,7 @@ export default function StudentServices() {
         )}
       </div>
 
-      <Card className="p-5 bg-blue-50 border-blue-200">
+      <Card className="p-4 sm:p-5 bg-blue-50 border-blue-200">
         <h3 className="font-semibold text-gray-900 mb-1">About My Services</h3>
         <p className="text-sm text-gray-600">
           These are your assigned service duties. Contact your administrator if

@@ -91,19 +91,25 @@ export default function StudentAttendance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">
             My Attendance History
           </h2>
           <p className="text-sm text-gray-500">Track your attendance records</p>
         </div>
-        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+        {/* Filter tabs — scrollable on mobile */}
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto shrink-0">
           {filterOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => setFilter(option.value)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === option.value ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                filter === option.value
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
               {option.label}
             </button>
@@ -111,59 +117,67 @@ export default function StudentAttendance() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Attendance Rate</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-600 mb-1">
+                Attendance Rate
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {attendanceRate}%
               </p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Present</p>
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-xs sm:text-sm text-gray-600 mb-1">Present</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-600">
                 {presentCount}
               </p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <div className="w-4 h-4 bg-green-500 rounded-full"></div>
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Late</p>
-              <p className="text-3xl font-bold text-yellow-600">{lateCount}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-1">Late</p>
+              <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
+                {lateCount}
+              </p>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Absent</p>
-              <p className="text-3xl font-bold text-red-600">{absentCount}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-1">Absent</p>
+              <p className="text-2xl sm:text-3xl font-bold text-red-600">
+                {absentCount}
+              </p>
             </div>
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
               <div className="w-4 h-4 bg-red-500 rounded-full"></div>
             </div>
           </div>
         </Card>
       </div>
 
+      {/* Records list */}
       <Card className="overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b">
+        <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b">
           <h3 className="font-semibold text-gray-900">
             Recent Attendance Records
           </h3>
@@ -177,14 +191,16 @@ export default function StudentAttendance() {
             {attendance.map((record, index) => (
               <div
                 key={record.recordId}
-                className={`p-5 flex items-center justify-between hover:bg-gray-50 transition-colors ${index === 0 ? "bg-blue-50" : ""}`}
+                className={`px-4 sm:px-5 py-4 sm:py-5 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors ${
+                  index === 0 ? "bg-blue-50" : ""
+                }`}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-purple-600" />
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
                       {new Date(record.date).toLocaleDateString("en-US", {
                         weekday: "long",
                         year: "numeric",
@@ -192,19 +208,19 @@ export default function StudentAttendance() {
                         day: "numeric",
                       })}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       {index === 0 ? "Most recent" : `Record #${index + 1}`}
                     </p>
                   </div>
                 </div>
                 <Badge
-                  className={
+                  className={`shrink-0 ${
                     record.status === "PRESENT"
                       ? "bg-green-100 text-green-700 hover:bg-green-100"
                       : record.status === "LATE"
                         ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
                         : "bg-red-100 text-red-700 hover:bg-red-100"
-                  }
+                  }`}
                 >
                   {record.status}
                 </Badge>
@@ -219,21 +235,22 @@ export default function StudentAttendance() {
         )}
       </Card>
 
-      <Card className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+      {/* Performance card */}
+      <Card className="p-5 sm:p-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
         <h3 className="font-semibold text-gray-900 mb-3">
           Attendance Performance
         </h3>
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <span className="text-sm text-gray-700">Overall Attendance</span>
             <div className="flex items-center gap-2">
-              <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="flex-1 sm:w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full"
                   style={{ width: `${attendanceRate}%` }}
                 ></div>
               </div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-gray-900 shrink-0">
                 {attendanceRate}%
               </span>
             </div>

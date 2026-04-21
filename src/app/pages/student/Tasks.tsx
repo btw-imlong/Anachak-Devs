@@ -123,9 +123,9 @@ export default function StudentTasks() {
 
       {tasks.length > 0 && (
         <Card className="p-4 bg-purple-50 border-purple-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-purple-600" />
+              <Calendar className="w-5 h-5 text-purple-600 shrink-0" />
               <div>
                 <p className="font-medium text-gray-900">
                   Room {tasks[0].roomNumber} — {tasks[0].side} Side
@@ -150,19 +150,27 @@ export default function StudentTasks() {
             return (
               <Card
                 key={task.taskId}
-                className={`p-6 transition-all ${isToday ? "border-2 border-purple-500 bg-purple-50 shadow-md" : "hover:shadow-md"}`}
+                className={`p-4 sm:p-6 transition-all ${
+                  isToday
+                    ? "border-2 border-purple-500 bg-purple-50 shadow-md"
+                    : "hover:shadow-md"
+                }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1">
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                     <div
-                      className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${isToday ? "bg-purple-500" : "bg-gray-100"}`}
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isToday ? "bg-purple-500" : "bg-gray-100"
+                      }`}
                     >
                       <Calendar
-                        className={`w-6 h-6 ${isToday ? "text-white" : "text-gray-500"}`}
+                        className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                          isToday ? "text-white" : "text-gray-500"
+                        }`}
                       />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-semibold text-gray-900">
                           {formatDay(task.dayOfWeek)}
                         </h3>
@@ -172,7 +180,7 @@ export default function StudentTasks() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-lg font-medium text-gray-900 mb-1">
+                      <p className="text-base sm:text-lg font-medium text-gray-900 mb-1">
                         {task.title}
                       </p>
                       {task.description && (
@@ -181,12 +189,12 @@ export default function StudentTasks() {
                         </p>
                       )}
                       <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-4 h-4 shrink-0" />
                         <span>{task.taskTime}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     {done ? (
                       <div className="flex items-center gap-1 text-green-600">
                         <CheckCircle className="w-5 h-5" />
@@ -199,7 +207,7 @@ export default function StudentTasks() {
                       </div>
                     )}
                     {isToday && !done && (
-                      <p className="text-xs text-gray-400 text-right max-w-[120px]">
+                      <p className="text-xs text-gray-400 text-right max-w-[100px] sm:max-w-[120px]">
                         Your teacher will mark this done
                       </p>
                     )}
@@ -211,7 +219,7 @@ export default function StudentTasks() {
         )}
       </div>
 
-      <Card className="p-6 bg-blue-50 border-blue-200">
+      <Card className="p-4 sm:p-6 bg-blue-50 border-blue-200">
         <h3 className="font-semibold text-gray-900 mb-2">
           About Task Schedule
         </h3>
