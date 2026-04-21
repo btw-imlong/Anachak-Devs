@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -8,11 +8,12 @@ import {
   Settings,
   Bell,
   GraduationCap,
-  ArrowLeft,
+  LogOut,
   Menu,
   X,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { logout } from "../service/api";
 
 const navigation = [
   { name: "Dashboard", href: "/teacher", icon: LayoutDashboard },
@@ -24,7 +25,40 @@ const navigation = [
 
 export default function TeacherLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  async function handleLogout() {
+    await logout();
+    localStorage.clear();
+    navigate("/");
+  }
+
+  const NavLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <nav className="flex-1 px-4 py-6 space-y-1">
+      {navigation.map((item) => {
+        const isActive =
+          location.pathname === item.href ||
+          (item.href.includes("#") &&
+            location.pathname === item.href.split("#")[0]);
+        return (
+          <Link
+            key={item.name}
+            to={item.href}
+            onClick={onNavigate}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-green-50 text-green-600"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,7 +77,6 @@ export default function TeacherLayout() {
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
@@ -64,47 +97,24 @@ export default function TeacherLayout() {
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
-              const isActive =
-                location.pathname === item.href ||
-                (item.href.includes("#") &&
-                  location.pathname === item.href.split("#")[0]);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-green-50 text-green-600"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavLinks onNavigate={() => setSidebarOpen(false)} />
 
-          {/* Back to Portal Selection */}
           <div className="p-4 border-t border-gray-200">
-            <Link to="/" onClick={() => setSidebarOpen(false)}>
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Portals
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Sidebar — original, untouched, desktop only */}
+      {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col w-64 bg-white border-r border-gray-200">
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-200">
             <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-6 h-6 text-white" />
@@ -115,49 +125,26 @@ export default function TeacherLayout() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
-              const isActive =
-                location.pathname === item.href ||
-                (item.href.includes("#") &&
-                  location.pathname === item.href.split("#")[0]);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-green-50 text-green-600"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavLinks />
 
-          {/* Back to Portal Selection */}
           <div className="p-4 border-t border-gray-200">
-            <Link to="/">
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Portals
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Top Navigation */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-4 sm:px-8 py-4">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Hamburger — mobile only */}
               <button
                 className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0"
                 onClick={() => setSidebarOpen(true)}
@@ -190,7 +177,6 @@ export default function TeacherLayout() {
           </div>
         </div>
 
-        {/* Page Content */}
         <div className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
