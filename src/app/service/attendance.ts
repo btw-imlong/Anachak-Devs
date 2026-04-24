@@ -12,6 +12,7 @@ export interface AttendanceSummaryResponse {
 }
 
 export interface AttendanceRecordResponse {
+  note: String;
   recordId: number;
   studentId: number;
   studentName: string;

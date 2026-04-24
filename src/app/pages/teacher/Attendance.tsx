@@ -13,7 +13,7 @@ import {
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
-import { Calendar, Save, HelpCircle, Info } from "lucide-react";
+import { Calendar, Save, HelpCircle, Info, MessageSquare } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -21,8 +21,7 @@ import {
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 import axiosInstance from "../../service/axios";
-import type { RoomInfo, TeacherResponse } from "../../service/teacher";
-import type { AttendanceRecordResponse } from "../../service/attendance";
+import type { RoomInfo } from "../../service/teacher";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
 
@@ -31,6 +30,7 @@ interface StudentAttendance {
   studentId: number;
   studentName: string;
   status: AttendanceStatus;
+  note?: string; // ← NEW: optional reason for LATE/ABSENT
 }
 
 interface RoomResponse {
@@ -112,6 +112,7 @@ export default function TeacherAttendance() {
               studentId: r.studentId,
               studentName: r.studentName,
               status: r.status as AttendanceStatus,
+              note: r.note || "", // ← map note from backend
             })),
           );
         }
@@ -143,22 +144,47 @@ export default function TeacherAttendance() {
   function handleStatusChange(studentId: number, status: AttendanceStatus) {
     setAttendance((prev) => {
       const existing = prev.find((a) => a.studentId === studentId);
-      if (existing)
+      if (existing) {
         return prev.map((a) =>
-          a.studentId === studentId ? { ...a, status } : a,
+          a.studentId === studentId
+            ? {
+                ...a,
+                status,
+                // clear note if switching back to PRESENT
+                note: status === "PRESENT" ? "" : a.note,
+              }
+            : a,
         );
+      }
       const student = roomDetail?.students.find(
         (s) => s.studentId === studentId,
       );
       return [
         ...prev,
-        { recordId: 0, studentId, studentName: student?.name || "", status },
+        {
+          recordId: 0,
+          studentId,
+          studentName: student?.name || "",
+          status,
+          note: "",
+        },
       ];
     });
   }
 
+  // ← NEW: handle note change
+  function handleNoteChange(studentId: number, note: string) {
+    setAttendance((prev) =>
+      prev.map((a) => (a.studentId === studentId ? { ...a, note } : a)),
+    );
+  }
+
+  function getStudentAttendance(studentId: number): StudentAttendance | null {
+    return attendance.find((a) => a.studentId === studentId) || null;
+  }
+
   function getStudentStatus(studentId: number): AttendanceStatus | null {
-    return attendance.find((a) => a.studentId === studentId)?.status || null;
+    return getStudentAttendance(studentId)?.status || null;
   }
 
   async function handleSave() {
@@ -186,12 +212,14 @@ export default function TeacherAttendance() {
         const { data: records } = await axiosInstance.get(
           `/api/attendance?roomNumber=${roomDetail.roomNumber}&date=${selectedDate}`,
         );
-        const merged = records.map((r: any) => ({
-          recordId: r.recordId,
-          status:
-            attendance.find((a) => a.studentId === r.studentId)?.status ||
-            "ABSENT",
-        }));
+        const merged = records.map((r: any) => {
+          const local = attendance.find((a) => a.studentId === r.studentId);
+          return {
+            recordId: r.recordId,
+            status: local?.status || "ABSENT",
+            note: local?.note || null, // ← include note
+          };
+        });
         await axiosInstance.put("/api/attendance/bulk", { records: merged });
         setAttendance(
           records.map((r: any) => {
@@ -203,6 +231,7 @@ export default function TeacherAttendance() {
               studentId: r.studentId,
               studentName: r.studentName,
               status: (selected?.status || "ABSENT") as AttendanceStatus,
+              note: selected?.note || "",
             };
           }),
         );
@@ -211,6 +240,7 @@ export default function TeacherAttendance() {
         const updates = attendance.map((a) => ({
           recordId: a.recordId,
           status: a.status,
+          note: a.note || null, // ← include note
         }));
         await axiosInstance.put("/api/attendance/bulk", { records: updates });
       }
@@ -380,11 +410,22 @@ export default function TeacherAttendance() {
               <div className="space-y-3">
                 {students.map((student, index) => {
                   const status = getStudentStatus(student.studentId);
+                  const record = getStudentAttendance(student.studentId);
+                  const showNote = status === "LATE" || status === "ABSENT";
+
                   return (
                     <div
                       key={student.studentId}
                       className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                        index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                        status === "ABSENT"
+                          ? "border-red-100 bg-red-50/40"
+                          : status === "LATE"
+                            ? "border-yellow-100 bg-yellow-50/40"
+                            : status === "PRESENT"
+                              ? "border-green-100 bg-green-50/40"
+                              : index % 2 === 0
+                                ? "border-transparent bg-gray-50"
+                                : "border-transparent bg-white"
                       }`}
                     >
                       {/* Stack on mobile, row on sm+ */}
@@ -408,7 +449,7 @@ export default function TeacherAttendance() {
                           </div>
                         </div>
 
-                        {/* Buttons — full width on mobile */}
+                        {/* Status Buttons */}
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
@@ -448,6 +489,25 @@ export default function TeacherAttendance() {
                           </button>
                         </div>
                       </div>
+
+                      {/* ← NEW: Note textarea — only shows for LATE or ABSENT */}
+                      {showNote && (
+                        <div className="mt-3 flex items-start gap-2">
+                          <MessageSquare className="w-4 h-4 text-gray-400 mt-2.5 flex-shrink-0" />
+                          <textarea
+                            rows={2}
+                            placeholder={`Optional: reason for being ${status?.toLowerCase()}...`}
+                            value={record?.note || ""}
+                            onChange={(e) =>
+                              handleNoteChange(
+                                student.studentId,
+                                e.target.value,
+                              )
+                            }
+                            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-600 placeholder:text-gray-400 bg-white transition-all"
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -1,4 +1,3 @@
-// ─── AttendanceToday.tsx ──────────────────────────────────────────────────────
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Card } from "../../components/ui/card";
@@ -208,6 +207,12 @@ export default function AttendanceToday() {
                     {record.teacherName && (
                       <p className="text-xs text-gray-400 truncate">
                         Marked by: {record.teacherName}
+                      </p>
+                    )}
+                    {/* ← NEW: show note if present */}
+                    {record.note && (
+                      <p className="text-xs text-gray-500 italic mt-0.5">
+                        📝 {record.note}
                       </p>
                     )}
                   </div>
