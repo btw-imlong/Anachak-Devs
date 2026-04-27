@@ -1,64 +1,275 @@
-import { useState } from 'react';
-import { Card } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { Switch } from '../../components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Badge } from '../../components/ui/badge';
-import { Input } from '../../components/ui/input';
-import { Calendar, Save, HelpCircle, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
-import { getRoomsByTeacher, getStudentsByRoom, rooms } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { Card } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Label } from "../../components/ui/label";
+import { Switch } from "../../components/ui/switch";
+import { toast } from "react-toastify";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { Badge } from "../../components/ui/badge";
+import { Input } from "../../components/ui/input";
+import { Calendar, Save, HelpCircle, Info, MessageSquare } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
+import axiosInstance from "../../service/axios";
+import type { RoomInfo } from "../../service/teacher";
 
-type AttendanceStatus = 'present' | 'absent' | 'late';
+type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
 
 interface StudentAttendance {
-  studentId: string;
+  recordId: number;
+  studentId: number;
+  studentName: string;
   status: AttendanceStatus;
+  note?: string; // ← NEW: optional reason for LATE/ABSENT
+}
+
+interface RoomResponse {
+  id: number;
+  roomNumber: string;
+  side: string;
+  students: { studentId: number; name: string; idCardNumber: string }[];
+  teachers: { teacherId: number; name: string }[];
 }
 
 export default function TeacherAttendance() {
-  const currentTeacherId = 'teacher1';
-  const [helpMode, setHelpMode] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [helpMode, setHelpMode] = useState<boolean>(false);
+  const [selectedRoom, setSelectedRoom] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
   const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
+  const [myRooms, setMyRooms] = useState<RoomInfo[]>([]);
+  const [allRooms, setAllRooms] = useState<RoomInfo[]>([]);
+  const [roomDetail, setRoomDetail] = useState<RoomResponse | null>(null);
+  const [sessionExists, setSessionExists] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [loadingRoom, setLoadingRoom] = useState<boolean>(false);
+  const [togglingHelp, setTogglingHelp] = useState<boolean>(false);
 
-  // Get available rooms based on help mode
-  const myRooms = getRoomsByTeacher(currentTeacherId);
-  const availableRooms = helpMode ? rooms : myRooms;
+  const userId = localStorage.getItem("userId");
 
-  const selectedRoomData = rooms.find(r => r.id === selectedRoom);
-  const students = selectedRoom ? getStudentsByRoom(selectedRoom) : [];
+  useEffect(() => {
+    fetchRooms();
+  }, []);
 
-  const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
-    setAttendance(prev => {
-      const existing = prev.find(a => a.studentId === studentId);
-      if (existing) {
-        return prev.map(a => a.studentId === studentId ? { ...a, status } : a);
+  async function fetchRooms() {
+    try {
+      const { data: teacher } = await axiosInstance.get(
+        `/api/users/teacher/by-user/${userId}`,
+      );
+      setMyRooms(teacher.rooms || []);
+
+      const { data: allRoomsData } = await axiosInstance.get("/api/rooms");
+      const mapped: RoomInfo[] = allRoomsData.map((r: any) => ({
+        roomId: r.id,
+        roomNumber: r.roomNumber,
+        side: r.side,
+      }));
+      setAllRooms(mapped);
+    } catch {
+      toast.error("Failed to load rooms");
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedRoom || !selectedDate) return;
+    fetchAttendanceSession();
+  }, [selectedRoom, selectedDate]);
+
+  async function fetchAttendanceSession() {
+    try {
+      setLoadingRoom(true);
+      setSessionExists(false);
+      setAttendance([]);
+
+      const { data: roomData } = await axiosInstance.get(
+        `/api/rooms/id/${selectedRoom}`,
+      );
+      setRoomDetail(roomData);
+
+      try {
+        const { data: records } = await axiosInstance.get(
+          `/api/attendance?roomNumber=${roomData.roomNumber}&date=${selectedDate}`,
+        );
+        if (records.length === 0) {
+          setSessionExists(false);
+          setAttendance([]);
+        } else {
+          setSessionExists(true);
+          setAttendance(
+            records.map((r: any) => ({
+              recordId: r.recordId,
+              studentId: r.studentId,
+              studentName: r.studentName,
+              status: r.status as AttendanceStatus,
+              note: r.note || "", // ← map note from backend
+            })),
+          );
+        }
+      } catch (err: any) {
+        if (err.response?.status === 403) {
+          toast.error("You don't have access to this room. Enable help mode.");
+        }
       }
-      return [...prev, { studentId, status }];
+    } catch {
+      toast.error("Failed to load room");
+    } finally {
+      setLoadingRoom(false);
+    }
+  }
+
+  async function handleHelpModeToggle() {
+    try {
+      setTogglingHelp(true);
+      const { data } = await axiosInstance.patch("/api/attendance/help-mode");
+      setHelpMode(data.helpMode);
+      toast.info(data.message);
+    } catch (err: any) {
+      toast.error("Failed to toggle help mode: " + err.message);
+    } finally {
+      setTogglingHelp(false);
+    }
+  }
+
+  function handleStatusChange(studentId: number, status: AttendanceStatus) {
+    setAttendance((prev) => {
+      const existing = prev.find((a) => a.studentId === studentId);
+      if (existing) {
+        return prev.map((a) =>
+          a.studentId === studentId
+            ? {
+                ...a,
+                status,
+                // clear note if switching back to PRESENT
+                note: status === "PRESENT" ? "" : a.note,
+              }
+            : a,
+        );
+      }
+      const student = roomDetail?.students.find(
+        (s) => s.studentId === studentId,
+      );
+      return [
+        ...prev,
+        {
+          recordId: 0,
+          studentId,
+          studentName: student?.name || "",
+          status,
+          note: "",
+        },
+      ];
     });
-  };
+  }
 
-  const getStudentStatus = (studentId: string): AttendanceStatus | null => {
-    return attendance.find(a => a.studentId === studentId)?.status || null;
-  };
+  // ← NEW: handle note change
+  function handleNoteChange(studentId: number, note: string) {
+    setAttendance((prev) =>
+      prev.map((a) => (a.studentId === studentId ? { ...a, note } : a)),
+    );
+  }
 
-  const handleSave = () => {
-    alert(`Attendance saved for ${students.length} students on ${selectedDate}${helpMode ? ' (Substitute Teacher Mode)' : ''}`);
-  };
+  function getStudentAttendance(studentId: number): StudentAttendance | null {
+    return attendance.find((a) => a.studentId === studentId) || null;
+  }
+
+  function getStudentStatus(studentId: number): AttendanceStatus | null {
+    return getStudentAttendance(studentId)?.status || null;
+  }
+
+  async function handleSave() {
+    if (!roomDetail) return;
+    try {
+      setSaving(true);
+      if (!sessionExists) {
+        try {
+          await axiosInstance.post("/api/attendance", {
+            roomNumber: roomDetail.roomNumber,
+            date: selectedDate,
+          });
+        } catch (err: any) {
+          if (err.response?.status === 403)
+            throw new Error(
+              "Access denied — enable help mode to mark this room",
+            );
+          if (err.response?.status === 400)
+            throw new Error(
+              err.response.data || "Attendance already exists for this date",
+            );
+          throw new Error("Failed to create attendance session");
+        }
+
+        const { data: records } = await axiosInstance.get(
+          `/api/attendance?roomNumber=${roomDetail.roomNumber}&date=${selectedDate}`,
+        );
+        const merged = records.map((r: any) => {
+          const local = attendance.find((a) => a.studentId === r.studentId);
+          return {
+            recordId: r.recordId,
+            status: local?.status || "ABSENT",
+            note: local?.note || null, // ← include note
+          };
+        });
+        await axiosInstance.put("/api/attendance/bulk", { records: merged });
+        setAttendance(
+          records.map((r: any) => {
+            const selected = attendance.find(
+              (a) => a.studentId === r.studentId,
+            );
+            return {
+              recordId: r.recordId,
+              studentId: r.studentId,
+              studentName: r.studentName,
+              status: (selected?.status || "ABSENT") as AttendanceStatus,
+              note: selected?.note || "",
+            };
+          }),
+        );
+        setSessionExists(true);
+      } else {
+        const updates = attendance.map((a) => ({
+          recordId: a.recordId,
+          status: a.status,
+          note: a.note || null, // ← include note
+        }));
+        await axiosInstance.put("/api/attendance/bulk", { records: updates });
+      }
+      toast.success("Attendance saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save attendance");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const availableRooms = helpMode ? allRooms : myRooms;
+  const myRoomIds = new Set(myRooms.map((r) => r.roomId));
+  const students = roomDetail?.students || [];
 
   return (
     <div className="space-y-6">
       {/* Header with Help Mode Toggle */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">Take Attendance</h2>
-            <p className="text-sm text-gray-500">Mark student attendance for the selected date</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">
+              Take Attendance
+            </h2>
+            <p className="text-sm text-gray-500">
+              Mark student attendance for the selected date
+            </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <TooltipProvider>
               <Tooltip>
@@ -69,22 +280,27 @@ export default function TeacherAttendance() {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-sm">
-                    <strong>Help Mode:</strong> Enable this when the assigned teacher is absent. 
-                    It allows you to take attendance for rooms not assigned to you. 
-                    The system will record that you acted as a substitute teacher.
+                    <strong>Help Mode:</strong> Enable this when the assigned
+                    teacher is absent. It allows you to take attendance for
+                    rooms not assigned to you.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             <div className="flex items-center gap-2">
-              <Label htmlFor="help-mode" className="text-sm font-medium cursor-pointer">
-                Help Mode (Substitute)
+              <Label
+                htmlFor="help-mode"
+                className="text-sm font-medium cursor-pointer"
+              >
+                <span className="hidden sm:inline">Help Mode (Substitute)</span>
+                <span className="sm:hidden">Help Mode</span>
               </Label>
-              <Switch 
-                id="help-mode" 
-                checked={helpMode} 
-                onCheckedChange={setHelpMode}
+              <Switch
+                id="help-mode"
+                checked={helpMode}
+                disabled={togglingHelp}
+                onCheckedChange={handleHelpModeToggle}
               />
             </div>
           </div>
@@ -94,9 +310,12 @@ export default function TeacherAttendance() {
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">Substitute Teacher Mode Active</p>
+              <p className="text-sm font-medium text-blue-900 mb-1">
+                Substitute Teacher Mode Active
+              </p>
               <p className="text-sm text-blue-700">
-                You can now select and manage attendance for any room. Your name will be recorded as the substitute teacher.
+                You can now select and manage attendance for any room. Your name
+                will be recorded as the substitute teacher.
               </p>
             </div>
           </div>
@@ -106,9 +325,9 @@ export default function TeacherAttendance() {
           <div className="space-y-2">
             <Label htmlFor="date">Select Date</Label>
             <div className="relative">
-              <Input 
+              <Input
                 id="date"
-                type="date" 
+                type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="pl-10"
@@ -120,18 +339,26 @@ export default function TeacherAttendance() {
           <div className="space-y-2">
             <Label htmlFor="room">
               Select Room
-              {helpMode && <span className="ml-2 text-xs text-blue-600">(All rooms available)</span>}
+              {helpMode && (
+                <span className="ml-2 text-xs text-blue-600">
+                  (All rooms available)
+                </span>
+              )}
             </Label>
             <Select value={selectedRoom} onValueChange={setSelectedRoom}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a room" />
               </SelectTrigger>
               <SelectContent>
-                {availableRooms.map(room => (
-                  <SelectItem key={room.id} value={room.id}>
-                    Room {room.number} - {room.side === 'girls' ? 'Girls' : 'Boys'} Side
-                    {!myRooms.includes(room) && helpMode && (
-                      <span className="ml-2 text-xs text-blue-600">(Other teacher's room)</span>
+                {availableRooms.map((room) => (
+                  <SelectItem key={room.roomId} value={String(room.roomId)}>
+                    Room {room.roomNumber} -{" "}
+                    {room.side.toLowerCase() === "girls" ? "Girls" : "Boys"}{" "}
+                    Side
+                    {helpMode && !myRoomIds.has(room.roomId) && (
+                      <span className="ml-2 text-xs text-blue-600">
+                        (Other teacher's room)
+                      </span>
                     )}
                   </SelectItem>
                 ))}
@@ -141,85 +368,146 @@ export default function TeacherAttendance() {
         </div>
       </Card>
 
-      {/* Attendance Table */}
-      {selectedRoom && students.length > 0 && (
+      {/* Loading */}
+      {loadingRoom && (
+        <Card className="p-12 text-center">
+          <p className="text-gray-400 text-sm">Loading room data...</p>
+        </Card>
+      )}
+
+      {/* Attendance List */}
+      {!loadingRoom && selectedRoom && students.length > 0 && (
         <>
           <Card className="overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900">
-                    Room {selectedRoomData?.number} - Attendance
+                    Room {roomDetail?.roomNumber} - Attendance
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
                     {students.length} students • {selectedDate}
+                    {sessionExists && (
+                      <span className="ml-2 text-green-600 text-xs font-medium">
+                        ✓ Session exists
+                      </span>
+                    )}
                   </p>
                 </div>
-                <Badge variant={selectedRoomData?.side === 'girls' ? 'secondary' : 'default'}>
-                  {selectedRoomData?.side === 'girls' ? 'Girls' : 'Boys'} Side
+                <Badge
+                  variant={
+                    roomDetail?.side.toLowerCase() === "girls"
+                      ? "secondary"
+                      : "default"
+                  }
+                >
+                  {roomDetail?.side} Side
                 </Badge>
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="space-y-3">
                 {students.map((student, index) => {
-                  const status = getStudentStatus(student.id);
+                  const status = getStudentStatus(student.studentId);
+                  const record = getStudentAttendance(student.studentId);
+                  const showNote = status === "LATE" || status === "ABSENT";
+
                   return (
-                    <div 
-                      key={student.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                    <div
+                      key={student.studentId}
+                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                        status === "ABSENT"
+                          ? "border-red-100 bg-red-50/40"
+                          : status === "LATE"
+                            ? "border-yellow-100 bg-yellow-50/40"
+                            : status === "PRESENT"
+                              ? "border-green-100 bg-green-50/40"
+                              : index % 2 === 0
+                                ? "border-transparent bg-gray-50"
+                                : "border-transparent bg-white"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {student.name.split(' ').map(n => n[0]).join('')}
+                      {/* Stack on mobile, row on sm+ */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-white font-medium text-xs sm:text-sm">
+                              {student.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{student.name}</p>
-                            {student.serviceRole && (
-                              <p className="text-sm text-gray-600">{student.serviceRole}</p>
-                            )}
+                            <p className="font-medium text-gray-900 text-sm sm:text-base">
+                              {student.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {student.idCardNumber}
+                            </p>
                           </div>
                         </div>
 
+                        {/* Status Buttons */}
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleStatusChange(student.id, 'present')}
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
-                              status === 'present'
-                                ? 'bg-green-500 text-white shadow-md scale-105'
-                                : 'bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600'
+                            onClick={() =>
+                              handleStatusChange(student.studentId, "PRESENT")
+                            }
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                              status === "PRESENT"
+                                ? "bg-green-500 text-white shadow-md scale-105"
+                                : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600"
                             }`}
                           >
                             Present
                           </button>
                           <button
-                            onClick={() => handleStatusChange(student.id, 'late')}
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
-                              status === 'late'
-                                ? 'bg-yellow-500 text-white shadow-md scale-105'
-                                : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600'
+                            onClick={() =>
+                              handleStatusChange(student.studentId, "LATE")
+                            }
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                              status === "LATE"
+                                ? "bg-yellow-500 text-white shadow-md scale-105"
+                                : "bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600"
                             }`}
                           >
                             Late
                           </button>
                           <button
-                            onClick={() => handleStatusChange(student.id, 'absent')}
-                            className={`px-4 py-2 rounded-full font-medium transition-all ${
-                              status === 'absent'
-                                ? 'bg-red-500 text-white shadow-md scale-105'
-                                : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600'
+                            onClick={() =>
+                              handleStatusChange(student.studentId, "ABSENT")
+                            }
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                              status === "ABSENT"
+                                ? "bg-red-500 text-white shadow-md scale-105"
+                                : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
                             }`}
                           >
                             Absent
                           </button>
                         </div>
                       </div>
+
+                      {/* ← NEW: Note textarea — only shows for LATE or ABSENT */}
+                      {showNote && (
+                        <div className="mt-3 flex items-start gap-2">
+                          <MessageSquare className="w-4 h-4 text-gray-400 mt-2.5 flex-shrink-0" />
+                          <textarea
+                            rows={2}
+                            placeholder={`Optional: reason for being ${status?.toLowerCase()}...`}
+                            value={record?.note || ""}
+                            onChange={(e) =>
+                              handleNoteChange(
+                                student.studentId,
+                                e.target.value,
+                              )
+                            }
+                            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-600 placeholder:text-gray-400 bg-white transition-all"
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -228,53 +516,58 @@ export default function TeacherAttendance() {
           </Card>
 
           {/* Summary Card */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
-            <div className="flex items-center justify-between">
+          <Card className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Attendance Summary</h3>
-                <div className="flex items-center gap-6 text-sm">
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  Attendance Summary
+                </h3>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" />
                     <span className="text-gray-700">
-                      Present: {attendance.filter(a => a.status === 'present').length}
+                      Present:{" "}
+                      {attendance.filter((a) => a.status === "PRESENT").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full" />
                     <span className="text-gray-700">
-                      Late: {attendance.filter(a => a.status === 'late').length}
+                      Late:{" "}
+                      {attendance.filter((a) => a.status === "LATE").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-red-500 rounded-full" />
                     <span className="text-gray-700">
-                      Absent: {attendance.filter(a => a.status === 'absent').length}
+                      Absent:{" "}
+                      {attendance.filter((a) => a.status === "ABSENT").length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                    <div className="w-3 h-3 bg-gray-300 rounded-full" />
                     <span className="text-gray-700">
                       Not marked: {students.length - attendance.length}
                     </span>
                   </div>
                 </div>
               </div>
-              
-              <Button 
-                size="lg" 
+
+              <Button
+                size="lg"
                 onClick={handleSave}
-                disabled={attendance.length === 0}
-                className="bg-green-600 hover:bg-green-700"
+                disabled={attendance.length === 0 || saving}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Attendance
+                {saving ? "Saving..." : "Save Attendance"}
               </Button>
             </div>
           </Card>
         </>
       )}
 
-      {selectedRoom && students.length === 0 && (
+      {!loadingRoom && selectedRoom && students.length === 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500">No students found in this room</p>
         </Card>
@@ -283,7 +576,9 @@ export default function TeacherAttendance() {
       {!selectedRoom && (
         <Card className="p-12 text-center">
           <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">Select a room to start taking attendance</p>
+          <p className="text-gray-500">
+            Select a room to start taking attendance
+          </p>
         </Card>
       )}
     </div>

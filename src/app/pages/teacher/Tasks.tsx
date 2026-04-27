@@ -1,85 +1,410 @@
-import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { CalendarDays } from 'lucide-react';
-import { getRoomsByTeacher, getTasksByRoom } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  RotateCcw,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import { Link } from "react-router";
+import axiosInstance from "../../service/axios";
+import type { RoomInfo, TeacherResponse } from "../../service/teacher";
+import type {
+  TaskResponse,
+  TaskCompletionResponse,
+} from "../../service/TeacherTask";
+
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+const JS_DAY_MAP: Record<number, string> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+};
+
+function getTodayName(): string {
+  return JS_DAY_MAP[new Date().getDay()];
+}
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+function getWeekFrom(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  return monday.toISOString().split("T")[0];
+}
+function getWeekTo(): string {
+  const from = new Date(getWeekFrom());
+  from.setDate(from.getDate() + 6);
+  return from.toISOString().split("T")[0];
+}
 
 export default function TeacherTasks() {
-  const currentTeacherId = 'teacher1';
-  const myRooms = getRoomsByTeacher(currentTeacherId);
+  const [myRooms, setMyRooms] = useState<RoomInfo[]>([]);
+  const [tasksByRoom, setTasksByRoom] = useState<
+    Record<string, TaskResponse[]>
+  >({});
+  const [completionKeys, setCompletionKeys] = useState<Set<string>>(new Set());
+  const [completionIdMap, setCompletionIdMap] = useState<
+    Record<string, number>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [markingTaskId, setMarkingTaskId] = useState<number | null>(null);
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const userId = localStorage.getItem("userId");
+  const today = getTodayDate();
+  const todayName = getTodayName();
+  const weekFrom = getWeekFrom();
+  const weekTo = getWeekTo();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    try {
+      setLoading(true);
+      const { data: teacher } = await axiosInstance.get(
+        `/api/users/teacher/by-user/${userId}`,
+      );
+      const rooms: RoomInfo[] = teacher.rooms || [];
+      setMyRooms(rooms);
+
+      const taskMap: Record<string, TaskResponse[]> = {};
+      await Promise.all(
+        rooms.map(async (room) => {
+          try {
+            const { data } = await axiosInstance.get(
+              `/api/tasks/room/${room.roomNumber}`,
+            );
+            taskMap[room.roomNumber] = data;
+          } catch {
+            taskMap[room.roomNumber] = [];
+          }
+        }),
+      );
+      setTasksByRoom(taskMap);
+
+      const keys = new Set<string>();
+      const idMap: Record<string, number> = {};
+      await Promise.all(
+        rooms.map(async (room) => {
+          try {
+            const { data: comps } = await axiosInstance.get(
+              `/api/tasks/completions/room/${room.roomNumber}?from=${weekFrom}&to=${weekTo}`,
+            );
+            for (const c of comps) {
+              const key = `${c.taskId}|${c.completedDate}`;
+              keys.add(key);
+              idMap[key] = c.completionId;
+            }
+          } catch {}
+        }),
+      );
+      setCompletionKeys(keys);
+      setCompletionIdMap(idMap);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function isDone(taskId: number, date: string): boolean {
+    return completionKeys.has(`${taskId}|${date}`);
+  }
+
+  async function handleMarkDone(task: TaskResponse) {
+    try {
+      setMarkingTaskId(task.taskId);
+      const { data: completion } = await axiosInstance.post(
+        "/api/tasks/complete",
+        {
+          taskId: task.taskId,
+          completedDate: today,
+        },
+      );
+      const key = `${task.taskId}|${today}`;
+      setCompletionKeys((prev) => new Set(prev).add(key));
+      setCompletionIdMap((prev) => ({
+        ...prev,
+        [key]: completion.completionId,
+      }));
+      toast.success(`"${task.title}" marked as done!`);
+    } catch (err: any) {
+      if (err.response?.status === 400)
+        toast.warning(err.response.data || "Already marked done today");
+      else toast.error("Failed to mark task as done");
+    } finally {
+      setMarkingTaskId(null);
+    }
+  }
+
+  async function handleUnmark(task: TaskResponse) {
+    try {
+      setMarkingTaskId(task.taskId);
+      await axiosInstance.delete(`/api/tasks/${task.taskId}/complete/${today}`);
+      const key = `${task.taskId}|${today}`;
+      setCompletionKeys((prev) => {
+        const s = new Set(prev);
+        s.delete(key);
+        return s;
+      });
+      setCompletionIdMap((prev) => {
+        const m = { ...prev };
+        delete m[key];
+        return m;
+      });
+      toast.success(`"${task.title}" unmarked`);
+    } catch {
+      toast.error("Failed to unmark task");
+    } finally {
+      setMarkingTaskId(null);
+    }
+  }
+
+  function getTaskForDay(
+    roomNumber: string,
+    day: string,
+  ): TaskResponse | undefined {
+    return tasksByRoom[roomNumber]?.find(
+      (t) => t.dayOfWeek.toLowerCase() === day.toLowerCase(),
+    );
+  }
+
+  function statusBadge(done: boolean, hasTask: boolean) {
+    if (!hasTask)
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+          <XCircle className="w-3 h-3" />
+          <span className="hidden sm:inline">No task</span>
+        </span>
+      );
+    return done ? (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <CheckCircle2 className="w-3 h-3" />
+        <span className="hidden sm:inline">Done</span>
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+        <Clock className="w-3 h-3" />
+        <span className="hidden sm:inline">Pending</span>
+      </span>
+    );
+  }
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-sm">Loading tasks...</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-red-500 text-sm">Error: {error}</p>
+      </div>
+    );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Weekly Task Schedule</h2>
-        <p className="text-sm text-gray-500">View weekly tasks for your assigned rooms</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">
+            Weekly Task Schedule
+          </h2>
+          <p className="text-sm text-gray-500">
+            View and manage tasks for your assigned rooms
+          </p>
+        </div>
+        <Link to="/teacher/tasks/all">
+          <button className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+            View All Rooms
+          </button>
+        </Link>
       </div>
 
-      {/* Rotation Info */}
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <CalendarDays className="w-5 h-5 text-blue-600" />
+            <CalendarDays className="w-5 h-5 text-blue-600 flex-shrink-0" />
             <div>
-              <p className="font-medium text-gray-900">Current Rotation: Month 1 of 3</p>
-              <p className="text-sm text-gray-600">Tasks rotate every 3 months</p>
+              <p className="font-medium text-gray-900">Today is {todayName}</p>
+              <p className="text-sm text-gray-600">
+                Click{" "}
+                <span className="font-medium text-green-600">Mark Done</span> on
+                today's task when complete.
+              </p>
             </div>
           </div>
-          <Badge className="bg-blue-600 hover:bg-blue-600">
-            Jan - Mar 2026
+          <Badge className="bg-blue-600 hover:bg-blue-600 self-start sm:self-auto flex-shrink-0">
+            {new Date().toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
           </Badge>
         </div>
       </Card>
 
-      {/* Tasks for Each Room */}
-      {myRooms.map(room => {
-        const roomTasks = getTasksByRoom(room.id);
-        
+      {myRooms.length === 0 && (
+        <Card className="p-12 text-center">
+          <p className="text-gray-500">No rooms assigned to you</p>
+        </Card>
+      )}
+
+      {myRooms.map((room) => {
+        const tasks: TaskResponse[] = tasksByRoom[room.roomNumber] || [];
+        const todayTask = tasks.find(
+          (t) => t.dayOfWeek.toLowerCase() === todayName.toLowerCase(),
+        );
         return (
-          <Card key={room.id} className="overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b">
-              <div className="flex items-center justify-between">
+          <Card key={room.roomId} className="overflow-hidden">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900">Room {room.number}</h3>
-                  <p className="text-sm text-gray-500">Weekly task schedule</p>
+                  <h3 className="font-semibold text-gray-900">
+                    Room {room.roomNumber}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {tasks.length} task{tasks.length !== 1 ? "s" : ""} scheduled
+                    {todayTask && (
+                      <span className="ml-2 text-blue-600 font-medium">
+                        • Today: {todayTask.title}
+                      </span>
+                    )}
+                  </p>
                 </div>
-                <Badge variant={room.side === 'girls' ? 'secondary' : 'default'}>
-                  {room.side === 'girls' ? 'Girls' : 'Boys'} Side
+                <Badge
+                  variant={
+                    room.side.toLowerCase() === "girls"
+                      ? "secondary"
+                      : "default"
+                  }
+                >
+                  {room.side} Side
                 </Badge>
               </div>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Day</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Rotation Month</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {days.map(day => {
-                  const task = roomTasks.find(t => t.day === day);
-                  return (
-                    <TableRow key={day}>
-                      <TableCell className="font-medium">
-                        <Badge variant="outline">{day}</Badge>
-                      </TableCell>
-                      <TableCell>{task?.task || 'No task assigned'}</TableCell>
-                      <TableCell>
-                        {task && (
-                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                            Month {task.rotationMonth}/3
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24 sm:w-32">Day</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Description
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell w-24">
+                      Time
+                    </TableHead>
+                    <TableHead className="w-16 sm:w-28">Status</TableHead>
+                    <TableHead className="w-28 sm:w-40">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {DAYS.map((day) => {
+                    const task = getTaskForDay(room.roomNumber, day);
+                    const isToday =
+                      day.toLowerCase() === todayName.toLowerCase();
+                    const isMarking = markingTaskId === task?.taskId;
+                    const done = task ? isDone(task.taskId, today) : false;
+                    return (
+                      <TableRow
+                        key={day}
+                        className={isToday ? "bg-blue-50" : ""}
+                      >
+                        <TableCell>
+                          <Badge
+                            variant={isToday ? "default" : "outline"}
+                            className={isToday ? "bg-blue-600 text-white" : ""}
+                          >
+                            {/* Short on mobile */}
+                            <span className="sm:hidden">{day.slice(0, 3)}</span>
+                            <span className="hidden sm:inline">{day}</span>
                           </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="font-medium text-gray-900 text-sm">
+                          {task?.title ?? (
+                            <span className="text-gray-400 font-normal">—</span>
+                          )}
+                          {/* Time below title on mobile */}
+                          {task?.taskTime && (
+                            <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                              {task.taskTime}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-gray-600">
+                          {task?.description ?? "—"}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm text-gray-600">
+                          {task?.taskTime ?? "—"}
+                        </TableCell>
+                        <TableCell>{statusBadge(done, !!task)}</TableCell>
+                        <TableCell>
+                          {task && isToday && !done && (
+                            <button
+                              onClick={() => handleMarkDone(task)}
+                              disabled={isMarking}
+                              className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                isMarking
+                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  : "bg-green-600 text-white hover:bg-green-700"
+                              }`}
+                            >
+                              {isMarking ? "..." : "Mark Done"}
+                            </button>
+                          )}
+                          {task && isToday && done && (
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <span className="text-xs text-green-600 font-medium hidden sm:inline">
+                                ✓ Completed
+                              </span>
+                              <button
+                                onClick={() => handleUnmark(task)}
+                                disabled={isMarking}
+                                className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                title="Undo"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span className="hidden sm:inline">Undo</span>
+                              </button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         );
       })}

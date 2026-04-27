@@ -1,28 +1,47 @@
-import { useParams, Link } from 'react-router';
-import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { ArrowLeft, Users, ClipboardCheck } from 'lucide-react';
-import { getRoomById, getStudentsByRoom, getTeacherById, attendanceRecords } from '../../data/mockData';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { ArrowLeft, Users, ClipboardCheck } from "lucide-react";
+import axiosInstance from "../../service/axios";
+import type { RoomDetailResponse } from "../../service/room";
 
 export default function TeacherRoomDetail() {
-  const { roomId } = useParams();
-  const room = getRoomById(roomId || '');
-  const students = getStudentsByRoom(roomId || '');
-  const teacher = getTeacherById(room?.teacherId || '');
+  const { roomId } = useParams<{ roomId: string }>();
+  const [room, setRoom] = useState<RoomDetailResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const todayDate = new Date().toISOString().split('T')[0];
-  const todayAttendance = attendanceRecords.filter(r => 
-    r.date === todayDate && students.some(s => s.id === r.studentId)
-  );
+  useEffect(() => {
+    if (!roomId) return;
+    fetchRoomDetail();
+  }, [roomId]);
 
-  if (!room) {
+  async function fetchRoomDetail() {
+    try {
+      setLoading(true);
+      const { data } = await axiosInstance.get(`/api/rooms/id/${roomId}`);
+      setRoom(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-sm">Loading room details...</p>
+      </div>
+    );
+  if (error || !room)
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Room not found</p>
       </div>
     );
-  }
 
   return (
     <div className="space-y-6">
@@ -35,19 +54,29 @@ export default function TeacherRoomDetail() {
       </Link>
 
       {/* Room Header */}
-      <Card className="p-6">
-        <div className="flex items-start justify-between">
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">Room {room.number}</h1>
-              <Badge variant={room.side === 'girls' ? 'secondary' : 'default'}>
-                {room.side === 'girls' ? 'Girls' : 'Boys'} Side
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Room {room.roomNumber}
+              </h1>
+              <Badge
+                variant={
+                  room.side.toLowerCase() === "girls" ? "secondary" : "default"
+                }
+              >
+                {room.side} Side
               </Badge>
             </div>
-            <p className="text-gray-600">Assigned Teacher: {teacher?.name}</p>
+            {room.teachers.length > 0 && (
+              <p className="text-gray-600">
+                Assigned Teacher: {room.teachers.map((t) => t.name).join(", ")}
+              </p>
+            )}
           </div>
-          <Link to="/teacher/attendance">
-            <Button>
+          <Link to="/teacher/attendance" className="sm:flex-shrink-0">
+            <Button className="w-full sm:w-auto">
               <ClipboardCheck className="w-4 h-4 mr-2" />
               Take Attendance
             </Button>
@@ -56,12 +85,14 @@ export default function TeacherRoomDetail() {
       </Card>
 
       {/* Room Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Students</p>
-              <p className="text-3xl font-bold text-gray-900">{students.length}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {room.totalStudents}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-blue-600" />
@@ -69,12 +100,12 @@ export default function TeacherRoomDetail() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">With Service Roles</p>
+              <p className="text-sm text-gray-600 mb-1">Assigned Teachers</p>
               <p className="text-3xl font-bold text-gray-900">
-                {students.filter(s => s.serviceRole).length}
+                {room.teachers.length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -83,12 +114,13 @@ export default function TeacherRoomDetail() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Present Today</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {todayAttendance.filter(a => a.status === 'present').length}
+              <p className="text-3xl font-bold text-gray-900">—</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Attendance coming soon
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -99,62 +131,46 @@ export default function TeacherRoomDetail() {
       </div>
 
       {/* Student List */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Students</h2>
-        
-        {students.length === 0 ? (
+
+        {room.students.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500">No students assigned to this room yet</p>
+            <p className="text-gray-500">
+              No students assigned to this room yet
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {students.map(student => {
-              const attendance = todayAttendance.find(a => a.studentId === student.id);
-              return (
-                <div 
-                  key={student.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-medium text-sm">
-                        {student.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{student.name}</p>
-                      {student.serviceRole && (
-                        <p className="text-sm text-gray-600">{student.serviceRole}</p>
-                      )}
-                    </div>
+            {room.students.map((student, index) => (
+              <div
+                key={student.studentId}
+                className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-medium text-xs sm:text-sm">
+                      {student.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    {student.serviceRole && (
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {student.serviceRole}
-                      </Badge>
-                    )}
-                    {attendance && (
-                      <Badge 
-                        variant={
-                          attendance.status === 'present' ? 'default' :
-                          attendance.status === 'late' ? 'secondary' :
-                          'destructive'
-                        }
-                        className={
-                          attendance.status === 'present' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
-                          attendance.status === 'late' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' :
-                          'bg-red-100 text-red-700 hover:bg-red-100'
-                        }
-                      >
-                        {attendance.status.charAt(0).toUpperCase() + attendance.status.slice(1)}
-                      </Badge>
-                    )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {student.name}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {student.idCardNumber}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-xs text-gray-400">#{index + 1}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Card>
