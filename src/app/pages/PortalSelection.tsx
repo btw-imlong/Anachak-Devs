@@ -163,6 +163,22 @@ export default function LoginForm() {
               )}
             </button>
           </form>
+
+          {/* Demo credentials for portfolio visitors */}
+          <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+            <p className="text-xs font-medium text-gray-700 mb-2">
+              Demo credentials — feel free to explore
+            </p>
+            <div className="space-y-1 text-xs text-gray-500 font-mono">
+              <p>Admin: admin@school.com / password123</p>
+              <p>Teacher: sophea@school.com / password123</p>
+              <p>Student: visal@school.com / password123</p>
+            </div>
+            <p className="mt-3 text-[11px] text-amber-600 leading-relaxed">
+              ⏱ First sign-in may take up to a minute — the backend is on free
+              hosting that spins down when idle.
+            </p>
+          </div>
         </div>
       </div>
 
